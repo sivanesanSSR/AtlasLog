@@ -1,0 +1,82 @@
+name: gym_manager
+description: A Flutter app to manage gym subscriptions using Google Drive as storage.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Local storage
+  path_provider: ^2.1.4
+
+  # Export / Import backup file
+  file_picker: ^8.1.2
+  share_plus: ^10.0.2
+
+  # Local notifications (auto-reminder)
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Utilities
+  uuid: ^4.4.0
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  image_picker: ^1.1.2
+  image_cropper: ^8.1.0
+
+  # Analytics dashboard charts
+  fl_chart: ^0.69.0
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/splash/
+
+# ---- App icon generation ----
+# Drop your logo (square, at least 1024x1024, PNG with transparent bg
+# recommended) at assets/icon/icon.png, then run:
+#   dart run flutter_launcher_icons
+# NOTE: iOS icon generation is disabled here since iOS builds require
+# macOS/Xcode and aren't possible on Windows. Set ios: true if you ever
+# build on a Mac and want iOS icons generated too.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon/icon_adaptive_foreground.png"
+
+# ---- Splash screen generation ----
+# Drop your splash image at assets/splash/splash.png, then run:
+#   dart run flutter_native_splash:create
+# NOTE: iOS splash generation also disabled for the same reason as above.
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/splash/splash.png
+  color_dark: "#121212"
+  image_dark: assets/splash/splash.png
+  android_12:
+    image: assets/splash/splash.png
+    icon_background_color: "#FFFFFF"
+    image_dark: assets/splash/splash.png
+    icon_background_color_dark: "#121212"
+  android: true
+  ios: false

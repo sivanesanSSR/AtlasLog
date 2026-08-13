@@ -1,0 +1,14 @@
+# ============================================================================
+# COMPLETE FILE — this replaces android/app/proguard-rules.pro entirely.
+# If that file doesn't exist yet, create it fresh with this content.
+# ============================================================================
+
+# Keep flutter_local_notifications classes — R8 minification can strip
+# reflection-based code these plugins rely on, silently breaking scheduled
+# reminders in release builds even though debug builds work fine.
+-keep class com.dexterous.** { *; }
+-keep class io.flutter.plugins.** { *; }
+
+# Keep Gson-based (de)serialization used internally by some plugins.
+-keepattributes Signature
+-keepattributes *Annotation*

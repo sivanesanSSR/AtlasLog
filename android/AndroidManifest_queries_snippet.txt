@@ -1,0 +1,34 @@
+<!-- Add this inside <manifest> in android/app/src/main/AndroidManifest.xml,
+     as a sibling of <application>. Required on Android 11+ (API 30+) so
+     url_launcher's canLaunchUrl() can detect WhatsApp and the SMS app;
+     without this, canLaunchUrl silently returns false even when the
+     apps are installed. -->
+
+<queries>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="https" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="whatsapp" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.SENDTO" />
+        <data android:scheme="sms" />
+    </intent>
+    <package android:name="com.whatsapp" />
+</queries>
+
+<!-- ---------------------------------------------------------------- -->
+<!-- Camera/Photo permissions for member photos (image_picker plugin) -->
+<!-- Add these as siblings of <application>, alongside <queries> above -->
+<!-- ---------------------------------------------------------------- -->
+
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+
+<!-- image_picker handles storage/gallery permission requests internally
+     on modern Android (API 33+ uses the system photo picker, which needs
+     no permission at all). No additional <uses-permission> needed for
+     gallery access on current Android versions. -->
