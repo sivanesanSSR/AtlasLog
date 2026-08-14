@@ -75,6 +75,43 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     });
   }
 
+  void _showImagePreview() {
+    if (_photo == null) return;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.file(
+                  _photo!,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _editMember() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => EditMemberScreen(member: _member!)),
@@ -191,11 +228,28 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     return Center(
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 48,
-            backgroundColor: Colors.grey.shade200,
-            backgroundImage: _photo != null ? FileImage(_photo!) : null,
-            child: _photo == null ? const Icon(Icons.person, size: 44, color: Colors.grey) : null,
+          GestureDetector(
+            onTap: _photo != null ? _showImagePreview : null,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: _photo != null ? FileImage(_photo!) : null,
+                  child: _photo == null ? const Icon(Icons.person, size: 44, color: Colors.grey) : null,
+                ),
+                if (_photo != null)
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.fullscreen, size: 18, color: Colors.grey),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Text(m.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
