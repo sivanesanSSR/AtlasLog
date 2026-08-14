@@ -7,6 +7,7 @@ import 'plan_management_screen.dart';
 import 'gym_profile_screen.dart';
 import 'send_reminders_screen.dart';
 import 'edit_message_template_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class SettingsTabScreen extends ConsumerWidget {
   const SettingsTabScreen({super.key});
@@ -16,7 +17,8 @@ class SettingsTabScreen extends ConsumerWidget {
       await ref.read(backupServiceProvider).exportBackup();
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
@@ -29,8 +31,12 @@ class SettingsTabScreen extends ConsumerWidget {
           'This will overwrite all current gym data (profile, plans, members, payments) with the contents of the backup file. This cannot be undone. Continue?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Import')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Import')),
         ],
       ),
     );
@@ -41,17 +47,21 @@ class SettingsTabScreen extends ConsumerWidget {
 
     switch (result) {
       case ImportResult.success:
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup imported successfully')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Backup imported successfully')));
         break;
       case ImportResult.invalidFormat:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('That file doesn\'t look like a valid Gym Manager backup')),
+          const SnackBar(
+              content: Text(
+                  'That file doesn\'t look like a valid Gym Manager backup')),
         );
         break;
       case ImportResult.cancelled:
         break;
       case ImportResult.error:
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to read the backup file')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to read the backup file')));
         break;
     }
   }
@@ -63,19 +73,25 @@ class SettingsTabScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('Appearance', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const Text('Appearance',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         Card(
           child: SwitchListTile(
-            secondary: Icon(isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined),
+            secondary: Icon(
+                isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined),
             title: const Text('Dark Theme'),
-            subtitle: Text(isDark ? 'Black & orange gradient' : 'Light & orange gradient'),
+            subtitle: Text(
+                isDark ? 'Black & orange gradient' : 'Light & orange gradient'),
             value: isDark,
             onChanged: (v) => ref.read(isDarkThemeProvider.notifier).setDark(v),
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Gym Setup', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const Text('Gym Setup',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         Card(
           child: Column(
@@ -84,20 +100,24 @@ class SettingsTabScreen extends ConsumerWidget {
                 leading: const Icon(Icons.store_outlined),
                 title: const Text('Gym Profile'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GymProfileScreen())),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const GymProfileScreen())),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.card_membership_outlined),
                 title: const Text('Manage Plans'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlanManagementScreen())),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const PlanManagementScreen())),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Reminders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const Text('Reminders',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         Card(
           child: Column(
@@ -106,20 +126,24 @@ class SettingsTabScreen extends ConsumerWidget {
                 leading: const Icon(Icons.notifications_active_outlined),
                 title: const Text('Send Reminders'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SendRemindersScreen())),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const SendRemindersScreen())),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.edit_note),
                 title: const Text('Reminder Message'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditMessageTemplateScreen())),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const EditMessageTemplateScreen())),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Data', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const Text('Data',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         Card(
           child: Column(
@@ -138,6 +162,22 @@ class SettingsTabScreen extends ConsumerWidget {
                 onTap: () => _importBackup(context, ref),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text('About & Legal',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy Policy'),
+            subtitle: const Text('Local storage & data handling policies'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+            ),
           ),
         ),
         const SizedBox(height: 80),
