@@ -12,16 +12,68 @@ import 'privacy_policy_screen.dart';
 class SettingsTabScreen extends ConsumerWidget {
   const SettingsTabScreen({super.key});
 
-  Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
-    try {
-      await ref.read(backupServiceProvider).exportBackup();
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Export failed: $e')));
-    }
+Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Export Backup',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.download_rounded),
+              title: const Text('Save to Downloads / Device'),
+              subtitle: const Text('Save .zip backup directly to your device storage'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  final saved = await ref.read(backupServiceProvider).saveBackupToDevice();
+                  if (!context.mounted) return;
+                  if (saved) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Backup saved successfully!')),
+                    );
+                  }
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Save failed: $e')),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded),
+              title: const Text('Share via App (Drive, WhatsApp, etc.)'),
+              subtitle: const Text('Upload to Google Drive or send via messages'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ref.read(backupServiceProvider).shareBackup();
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Share failed: $e')),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
   }
-
+  
   Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,

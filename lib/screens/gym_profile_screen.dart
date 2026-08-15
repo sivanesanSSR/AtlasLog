@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
+import '../services/backup_service.dart';
 import '../models/gym_profile.dart';
 import '../widgets/member_photo_picker.dart';
 import 'plan_management_screen.dart';
+import 'home_shell_screen.dart';
 
 /// Shown once after first sign-in (if no gym profile exists yet), or
 /// reachable later from settings to edit gym details.
@@ -31,6 +33,7 @@ class _GymProfileScreenState extends ConsumerState<GymProfileScreen> {
   bool _logoRemoved = false;
   bool _loading = true;
   bool _saving = false;
+  bool _restoring = false;
 
   @override
   void initState() {
@@ -89,6 +92,46 @@ class _GymProfileScreenState extends ConsumerState<GymProfileScreen> {
       );
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _handleRestoreBackup() async {
+    setState(() => _restoring = true);
+    try {
+      final result = await ref.read(backupServiceProvider).importBackup();
+      if (!mounted) return;
+
+      switch (result) {
+        case ImportResult.success:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Backup restored successfully!')),
+          );
+          // Navigate cleanly to HomeShellScreen removing initial setup routes
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeShellScreen()),
+            (route) => false,
+          );
+          break;
+        case ImportResult.invalidFormat:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('That file doesn\'t look like a valid Gym Manager backup')),
+          );
+          break;
+        case ImportResult.cancelled:
+          break;
+        case ImportResult.error:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to read and restore the backup file')),
+          );
+          break;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Restore error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _restoring = false);
     }
   }
 
@@ -159,12 +202,37 @@ class _GymProfileScreenState extends ConsumerState<GymProfileScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: _saving ? null : _submit,
+                      onPressed: (_saving || _restoring) ? null : _submit,
                       child: _saving
                           ? const SizedBox(
                               height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                           : Text(widget.isFirstRun ? 'Continue' : 'Save'),
                     ),
+                    if (widget.isFirstRun) ...[
+                      const SizedBox(height: 20),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('OR', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        icon: _restoring
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.settings_backup_restore_rounded),
+                        label: Text(_restoring ? 'Restoring...' : 'Restore from Backup (.zip)'),
+                        onPressed: (_saving || _restoring) ? null : _handleRestoreBackup,
+                      ),
+                    ],
                   ],
                 ),
               ),

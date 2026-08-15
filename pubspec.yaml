@@ -11,7 +11,9 @@ dependencies:
     sdk: flutter
 
   # Local storage
+  archive: ^3.6.1
   path_provider: ^2.1.4
+  path: ^1.9.0
 
   # Export / Import backup file
   file_picker: ^8.1.2
