@@ -7,6 +7,7 @@ import '../models/member.dart';
 import '../models/gym_profile.dart';
 import '../models/plan.dart';
 import '../utils/status_colors.dart';
+import '../utils/responsive.dart';
 import 'edit_message_template_screen.dart';
 
 enum ReminderChannel { whatsapp, sms }
@@ -127,7 +128,10 @@ class _SendRemindersScreenState extends ConsumerState<SendRemindersScreen> {
                     ),
                   ),
                 )
-              : Column(
+              : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: Responsive.maxContentWidth),
+                  child: Column(
                   children: [
                     Container(
                       width: double.infinity,
@@ -140,48 +144,23 @@ class _SendRemindersScreenState extends ConsumerState<SendRemindersScreen> {
                       ),
                     ),
                     Expanded(
-                      child: ListView.builder(
+                      child: Responsive.isPhone(context)
+                          ? ListView.builder(
                         padding: const EdgeInsets.all(12),
                         itemCount: _candidates.length,
-                        itemBuilder: (context, i) {
-                          final m = _candidates[i];
-                          final color = statusColor(m.status);
-                          return Card(
-                            child: CheckboxListTile(
-                              value: _selected.contains(m.id),
-                              onChanged: (v) {
-                                setState(() {
-                                  if (v == true) {
-                                    _selected.add(m.id);
-                                  } else {
-                                    _selected.remove(m.id);
-                                  }
-                                });
-                              },
-                              title: Text(m.name),
-                              subtitle: Text(
-                                '${m.mobile} · ${statusLabel(m.status)} · Ends ${m.endDate.toLocal().toString().split(' ')[0]}',
-                                style: TextStyle(color: color),
+                        itemBuilder: (context, i) => _reminderCard(_candidates[i]),
+                      )
+                          : GridView.builder(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: _candidates.length,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: Responsive.gridColumns(context, tablet: 2, desktop: 3),
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 2.4,
                               ),
-                              secondary: Wrap(
-                                spacing: 4,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Send via WhatsApp',
-                                    icon: const Icon(Icons.chat, color: Colors.green),
-                                    onPressed: () => _sendIndividual(m, ReminderChannel.whatsapp),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Send via SMS',
-                                    icon: const Icon(Icons.sms_outlined),
-                                    onPressed: () => _sendIndividual(m, ReminderChannel.sms),
-                                  ),
-                                ],
-                              ),
+                              itemBuilder: (context, i) => _reminderCard(_candidates[i]),
                             ),
-                          );
-                        },
-                      ),
                     ),
                     SafeArea(
                       child: Padding(
@@ -208,7 +187,47 @@ class _SendRemindersScreenState extends ConsumerState<SendRemindersScreen> {
                       ),
                     ),
                   ],
+                  ),
                 ),
+                ),
+    );
+  }
+
+  Widget _reminderCard(Member m) {
+    final color = statusColor(m.status);
+    return Card(
+      child: CheckboxListTile(
+        value: _selected.contains(m.id),
+        onChanged: (v) {
+          setState(() {
+            if (v == true) {
+              _selected.add(m.id);
+            } else {
+              _selected.remove(m.id);
+            }
+          });
+        },
+        title: Text(m.name),
+        subtitle: Text(
+          '${m.mobile} · ${statusLabel(m.status)} · Ends ${m.endDate.toLocal().toString().split(' ')[0]}',
+          style: TextStyle(color: color),
+        ),
+        secondary: Wrap(
+          spacing: 4,
+          children: [
+            IconButton(
+              tooltip: 'Send via WhatsApp',
+              icon: const Icon(Icons.chat, color: Colors.green),
+              onPressed: () => _sendIndividual(m, ReminderChannel.whatsapp),
+            ),
+            IconButton(
+              tooltip: 'Send via SMS',
+              icon: const Icon(Icons.sms_outlined),
+              onPressed: () => _sendIndividual(m, ReminderChannel.sms),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

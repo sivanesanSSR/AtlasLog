@@ -9,6 +9,7 @@ import '../models/payment.dart';
 import '../utils/status_colors.dart';
 import 'edit_member_screen.dart';
 import 'renew_member_screen.dart';
+import '../utils/responsive.dart';
 
 class MemberDetailScreen extends ConsumerStatefulWidget {
   final String memberId;
@@ -192,7 +193,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: Responsive.formPadding(context, maxWidth: Responsive.maxContentWidth),
                   children: [
                     _buildHeader(),
                     const SizedBox(height: 20),

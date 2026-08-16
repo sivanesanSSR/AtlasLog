@@ -5,6 +5,7 @@ import '../services/providers.dart';
 import '../services/gym_repository.dart';
 import '../models/member.dart';
 import '../widgets/member_photo_picker.dart';
+import '../utils/responsive.dart';
 
 class EditMemberScreen extends ConsumerStatefulWidget {
   final Member member;
@@ -96,7 +97,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
       body: _loadingPhoto
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16),
+              padding: Responsive.formPadding(context),
               child: Form(
                 key: _formKey,
                 child: ListView(

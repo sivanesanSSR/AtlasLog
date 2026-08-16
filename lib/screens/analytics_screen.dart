@@ -6,6 +6,7 @@ import '../models/member.dart';
 import '../models/plan.dart';
 import '../models/payment.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   /// When true, renders only the body content, no Scaffold/AppBar —
@@ -94,31 +95,82 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = Responsive.isTablet(context);
+
+    // On phones, sections stack in a single column. On tablets/desktop,
+    // the three smaller sections (Plan Distribution / Payment Mode /
+    // Membership Status) pair up two-per-row so the extra width is used
+    // instead of leaving charts stretched or space empty.
+    final sections = <Widget>[
+      _buildRevenueSummaryRow(),
+      const SizedBox(height: 24),
+      _sectionTitle('Monthly Revenue (Last 6 Months)'),
+      const SizedBox(height: 12),
+      _buildRevenueTrendChart(),
+      const SizedBox(height: 24),
+    ];
+
+    if (isTablet) {
+      sections.addAll([
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionTitle('Plan Distribution'),
+                  const SizedBox(height: 12),
+                  _buildPlanDistributionChart(),
+                ],
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionTitle('Payment Mode Breakdown'),
+                  const SizedBox(height: 12),
+                  _buildPaymentModeList(),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _sectionTitle('Membership Status'),
+        const SizedBox(height: 12),
+        _buildStatusBreakdown(),
+      ]);
+    } else {
+      sections.addAll([
+        _sectionTitle('Plan Distribution'),
+        const SizedBox(height: 12),
+        _buildPlanDistributionChart(),
+        const SizedBox(height: 24),
+        _sectionTitle('Payment Mode Breakdown'),
+        const SizedBox(height: 12),
+        _buildPaymentModeList(),
+        const SizedBox(height: 24),
+        _sectionTitle('Membership Status'),
+        const SizedBox(height: 12),
+        _buildStatusBreakdown(),
+      ]);
+    }
+    if (widget.embedded) sections.add(const SizedBox(height: 80));
+
     final bodyContent = _loading
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             onRefresh: _load,
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16, vertical: 16),
               children: [
-                _buildRevenueSummaryRow(),
-                const SizedBox(height: 24),
-                _sectionTitle('Monthly Revenue (Last 6 Months)'),
-                const SizedBox(height: 12),
-                _buildRevenueTrendChart(),
-                const SizedBox(height: 24),
-                _sectionTitle('Plan Distribution'),
-                const SizedBox(height: 12),
-                _buildPlanDistributionChart(),
-                const SizedBox(height: 24),
-                _sectionTitle('Payment Mode Breakdown'),
-                const SizedBox(height: 12),
-                _buildPaymentModeList(),
-                const SizedBox(height: 24),
-                _sectionTitle('Membership Status'),
-                const SizedBox(height: 12),
-                _buildStatusBreakdown(),
-                if (widget.embedded) const SizedBox(height: 80),
+                Responsive.centered(
+                  Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections),
+                  maxWidth: Responsive.maxContentWidth,
+                ),
               ],
             ),
           );

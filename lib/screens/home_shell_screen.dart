@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive.dart';
 import '../widgets/gradient_border_box.dart';
 import '../widgets/gradient_button.dart';
 import 'dashboard_screen.dart';
@@ -63,6 +64,13 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
     _membersTabKey.currentState?.load();
   }
 
+  static const _navItems = [
+    (Icons.home_outlined, Icons.home, 'Dashboard'),
+    (Icons.groups_outlined, Icons.groups, 'Members'),
+    (Icons.bar_chart_outlined, Icons.bar_chart, 'Reports'),
+    (Icons.settings_outlined, Icons.settings, 'Settings'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final tabs = [
@@ -72,37 +80,72 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       const SettingsTabScreen(),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
+    final isTablet = Responsive.isTablet(context);
+    final fab = (_index == 0 || _index == 1)
+        ? GradientButton(
+            onPressed: _handleAddMember,
+            icon: Icons.person_add,
+            child: const Text('Add Member'),
+          )
+        : null;
+
+    final appBar = AppBar(
       title: Text(_titles[_index]),
       bottom: PreferredSize(
-      preferredSize: const Size.fromHeight(4.0),
-      child: Container(
-      height: 4.0,
-      color: AppTheme.primary, // Simple solid orange border line
+        preferredSize: const Size.fromHeight(4.0),
+        child: Container(
+          height: 4.0,
+          color: AppTheme.primary, // Simple solid orange border line
+        ),
       ),
-      ),
-      ),
+    );
+
+    final body = IndexedStack(index: _index, children: tabs);
+
+    if (isTablet) {
+      // Wide layout: persistent side NavigationRail replaces the bottom
+      // nav bar. The drawer is kept (openable via the appbar icon) since
+      // it still holds secondary destinations (Send Reminders, Manage
+      // Plans, Gym Profile) that don't fit in the rail.
+      return Scaffold(
+        appBar: appBar,
+        drawer: _buildDrawer(),
+        floatingActionButton: fab,
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _index,
+              onDestinationSelected: (i) => setState(() => _index = i),
+              labelType: NavigationRailLabelType.all,
+              backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+              selectedIconTheme: const IconThemeData(color: AppTheme.primary),
+              selectedLabelTextStyle: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700),
+              destinations: _navItems
+                  .map((item) => NavigationRailDestination(
+                        icon: Icon(item.$1),
+                        selectedIcon: Icon(item.$2),
+                        label: Text(item.$3),
+                      ))
+                  .toList(),
+            ),
+            const VerticalDivider(width: 1, color: Color(0x33FF8C00)),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: appBar,
       drawer: _buildDrawer(),
-      body: IndexedStack(index: _index, children: tabs),
-      floatingActionButton: (_index == 0 || _index == 1)
-          ? GradientButton(
-              onPressed: _handleAddMember,
-              icon: Icons.person_add,
-              child: const Text('Add Member'),
-            )
-          : null,
+      body: body,
+      floatingActionButton: fab,
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
   Widget _buildBottomNav() {
-    final items = [
-      (Icons.home_outlined, Icons.home, 'Dashboard'),
-      (Icons.groups_outlined, Icons.groups, 'Members'),
-      (Icons.bar_chart_outlined, Icons.bar_chart, 'Reports'),
-      (Icons.settings_outlined, Icons.settings, 'Settings'),
-    ];
+    final items = _navItems;
 
     return Container(
       decoration: BoxDecoration(

@@ -6,6 +6,7 @@ import '../services/reminder_service.dart';
 import '../models/gym_profile.dart';
 import '../models/plan.dart';
 import '../models/member.dart';
+import '../utils/responsive.dart';
 
 class EditMessageTemplateScreen extends ConsumerStatefulWidget {
   const EditMessageTemplateScreen({super.key});
@@ -103,7 +104,7 @@ class _EditMessageTemplateScreenState extends ConsumerState<EditMessageTemplateS
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16),
+              padding: Responsive.formPadding(context),
               child: ListView(
                 children: [
                   const Text('Available placeholders — tap to insert:', style: TextStyle(fontWeight: FontWeight.bold)),

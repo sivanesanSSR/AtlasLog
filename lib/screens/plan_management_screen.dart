@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../models/plan.dart';
+import '../utils/responsive.dart';
 import 'home_shell_screen.dart';
 
 class PlanManagementScreen extends ConsumerStatefulWidget {
@@ -106,41 +107,64 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _plans.length,
-                  itemBuilder: (context, i) {
-                    final plan = _plans[i];
-                    return Card(
-                      child: ListTile(
-                        title: Text(plan.name),
-                        subtitle: Text(
-                          plan.durationMonths > 0
-                              ? '${plan.durationMonths} month(s) · ₹${plan.price.toStringAsFixed(0)}'
-                              : '₹${plan.price.toStringAsFixed(0)}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 20),
-                              onPressed: () => _openPlanForm(existing: plan),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 20),
-                              onPressed: () => _confirmDelete(plan),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+              : Responsive.centered(
+                  _buildPlansList(context),
+                  maxWidth: Responsive.maxContentWidth,
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openPlanForm(),
         icon: const Icon(Icons.add),
         label: const Text('Add Plan'),
       ),
+    );
+  }
+
+  Widget _planCard(Plan plan) {
+    return Card(
+      child: ListTile(
+        title: Text(plan.name),
+        subtitle: Text(
+          plan.durationMonths > 0
+              ? '${plan.durationMonths} month(s) · ₹${plan.price.toStringAsFixed(0)}'
+              : '₹${plan.price.toStringAsFixed(0)}',
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () => _openPlanForm(existing: plan),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              onPressed: () => _confirmDelete(plan),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Phones: single-column list. Tablets/desktop: grid of plan cards.
+  Widget _buildPlansList(BuildContext context) {
+    if (Responsive.isPhone(context)) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _plans.length,
+        itemBuilder: (context, i) => _planCard(_plans[i]),
+      );
+    }
+    final columns = Responsive.gridColumns(context, tablet: 2, desktop: 3);
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _plans.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 2.6,
+      ),
+      itemBuilder: (context, i) => _planCard(_plans[i]),
     );
   }
 }

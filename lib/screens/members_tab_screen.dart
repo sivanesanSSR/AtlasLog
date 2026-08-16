@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../models/member.dart';
 import '../utils/status_colors.dart';
+import '../utils/responsive.dart';
 import '../widgets/gradient_border_box.dart';
 import 'member_detail_screen.dart';
 
@@ -61,49 +62,56 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
   @override
   Widget build(BuildContext context) {
   final theme = Theme.of(context);
+  final isTablet = Responsive.isTablet(context);
 
   return _loading
       ? const Center(child: CircularProgressIndicator())
       : RefreshIndicator(
           onRefresh: load,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16, vertical: 16),
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: GradientBorderBox(
-                  borderRadius: 28,
-                  borderWidth: 1.2,
-                  fillColor: theme.cardColor,
-                  child: TextField(
-                    controller: _searchCtrl,
-                    style: TextStyle(color: theme.textTheme.bodyLarge?.color),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: false,
-                      border: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      hintText: 'Search by name, mobile, or member ID',
-                      hintStyle: TextStyle(color: theme.hintColor, fontSize: 13),
-                      prefixIcon: Icon(Icons.search, size: 20, color: theme.hintColor),
-                      suffixIcon: _searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear, size: 18, color: theme.hintColor),
-                              onPressed: () => _searchCtrl.clear(),
-                            )
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              Responsive.centered(
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: GradientBorderBox(
+                    borderRadius: 28,
+                    borderWidth: 1.2,
+                    fillColor: theme.cardColor,
+                    child: TextField(
+                      controller: _searchCtrl,
+                      style: TextStyle(color: theme.textTheme.bodyLarge?.color),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        border: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        hintText: 'Search by name, mobile, or member ID',
+                        hintStyle: TextStyle(color: theme.hintColor, fontSize: 13),
+                        prefixIcon: Icon(Icons.search, size: 20, color: theme.hintColor),
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear, size: 18, color: theme.hintColor),
+                                onPressed: () => _searchCtrl.clear(),
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      ),
                     ),
                   ),
                 ),
+                maxWidth: Responsive.maxContentWidth,
               ),
               const SizedBox(height: 16),
-              Text(
-                '${_filtered.length} member${_filtered.length == 1 ? '' : 's'}',
-                style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+              Responsive.centered(
+                Text(
+                  '${_filtered.length} member${_filtered.length == 1 ? '' : 's'}',
+                  style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+                ),
+                maxWidth: Responsive.maxContentWidth,
               ),
               const SizedBox(height: 8),
               if (_filtered.isEmpty)
@@ -117,12 +125,36 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
                   ),
                 )
               else
-                ..._filtered.map(_buildTile),
+                Responsive.centered(_buildMembersGrid(context), maxWidth: Responsive.maxContentWidth),
               const SizedBox(height: 80),
             ],
           ),
         );
   }
+
+  /// Phones: single-column list of `ListTile` rows (unchanged).
+  /// Tablets/desktop: grid of member cards, 2-3 columns per your choice,
+  /// so the wider screen shows more members at once instead of one long
+  /// stretched-out column.
+  Widget _buildMembersGrid(BuildContext context) {
+    if (Responsive.isPhone(context)) {
+      return Column(children: _filtered.map(_buildTile).toList());
+    }
+    final columns = Responsive.gridColumns(context, tablet: 2, desktop: 3);
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _filtered.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 2.6,
+      ),
+      itemBuilder: (context, i) => _buildTile(_filtered[i]),
+    );
+  }
+
   Widget _buildTile(Member m) {
     final color = statusColor(m.status);
     return Card(

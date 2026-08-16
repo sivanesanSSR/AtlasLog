@@ -5,6 +5,7 @@ import '../models/member.dart';
 import '../models/plan.dart';
 import '../models/payment.dart';
 import '../utils/status_colors.dart';
+import '../utils/responsive.dart';
 
 class RenewMemberScreen extends ConsumerStatefulWidget {
   final Member member;
@@ -140,7 +141,7 @@ class _RenewMemberScreenState extends ConsumerState<RenewMemberScreen> {
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: Responsive.formPadding(context),
                   child: Form(
                     key: _formKey,
                     child: ListView(

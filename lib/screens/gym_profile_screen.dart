@@ -7,6 +7,7 @@ import '../models/gym_profile.dart';
 import '../widgets/member_photo_picker.dart';
 import 'plan_management_screen.dart';
 import 'home_shell_screen.dart';
+import '../utils/responsive.dart';
 
 /// Shown once after first sign-in (if no gym profile exists yet), or
 /// reachable later from settings to edit gym details.
@@ -153,7 +154,7 @@ class _GymProfileScreenState extends ConsumerState<GymProfileScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16),
+              padding: Responsive.formPadding(context),
               child: Form(
                 key: _formKey,
                 child: ListView(

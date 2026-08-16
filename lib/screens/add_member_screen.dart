@@ -7,6 +7,7 @@ import '../models/plan.dart';
 import '../models/payment.dart';
 import '../widgets/member_photo_picker.dart';
 import 'plan_management_screen.dart';
+import '../utils/responsive.dart';
 
 class AddMemberScreen extends ConsumerStatefulWidget {
   const AddMemberScreen({super.key});
@@ -155,7 +156,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       body: _loadingPlans
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16),
+              padding: Responsive.formPadding(context),
               child: Form(
                 key: _formKey,
                 child: ListView(

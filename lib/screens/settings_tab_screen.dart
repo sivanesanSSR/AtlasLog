@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../services/backup_service.dart';
 import '../services/theme_controller.dart';
+import '../utils/responsive.dart';
 import 'plan_management_screen.dart';
 import 'gym_profile_screen.dart';
 import 'send_reminders_screen.dart';
@@ -123,7 +124,7 @@ Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
     final isDark = ref.watch(isDarkThemeProvider);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: Responsive.formPadding(context),
       children: [
         const Text('Appearance',
             style: TextStyle(

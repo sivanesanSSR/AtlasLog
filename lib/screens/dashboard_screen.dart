@@ -5,6 +5,7 @@ import '../services/providers.dart';
 import '../services/backup_service.dart';
 import '../models/member.dart';
 import '../utils/status_colors.dart';
+import '../utils/responsive.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_border_box.dart';
 import '../widgets/gradient_button.dart';
@@ -186,32 +187,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = Responsive.isTablet(context);
     final bodyContent = _loading
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             onRefresh: _load,
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16, vertical: 16),
               children: [
-                _buildCountsGrid(),
+                Responsive.centered(_buildCountsGrid(context), maxWidth: Responsive.maxContentWidth),
                 const SizedBox(height: 20),
-                _buildSearchAndFilterRow(),
+                Responsive.centered(_buildSearchAndFilterRow(), maxWidth: Responsive.maxContentWidth),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text('Members', style: Theme.of(context).textTheme.titleMedium),
-                    if (_cardFilter != _CardFilter.none) ...[
-                      const SizedBox(width: 8),
-                      Chip(
-                        label: Text(_cardFilterLabel(_cardFilter), style: const TextStyle(fontSize: 11)),
-                        onDeleted: () => _toggleCardFilter(_cardFilter),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
+                Responsive.centered(
+                  Row(
+                    children: [
+                      Text('Members', style: Theme.of(context).textTheme.titleMedium),
+                      if (_cardFilter != _CardFilter.none) ...[
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text(_cardFilterLabel(_cardFilter), style: const TextStyle(fontSize: 11)),
+                          onDeleted: () => _toggleCardFilter(_cardFilter),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
+                      const Spacer(),
+                      Text('${_filteredMembers.length} shown', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
-                    const Spacer(),
-                    Text('${_filteredMembers.length} shown', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
+                  ),
+                  maxWidth: Responsive.maxContentWidth,
                 ),
                 const SizedBox(height: 8),
                 if (_filteredMembers.isEmpty)
@@ -225,7 +230,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   )
                 else
-                  ..._filteredMembers.map(_buildMemberTile),
+                  Responsive.centered(_buildMembersList(context), maxWidth: Responsive.maxContentWidth),
                 if (widget.embedded) const SizedBox(height: 80), // clearance for shell's bottom nav + FAB
               ],
             ),
@@ -481,7 +486,7 @@ String _cardFilterLabel(_CardFilter filter) {
   }
 }
 
-Widget _buildCountsGrid() {
+Widget _buildCountsGrid(BuildContext context) {
   final c = _counts!;
   final items = [
     ('Total', c['total']!, Colors.blueGrey, _CardFilter.none),
@@ -492,13 +497,35 @@ Widget _buildCountsGrid() {
     ('Expired', c['expired']!, AppTheme.danger, _CardFilter.expired),
   ];
   return GridView.count(
-    crossAxisCount: 3,
+    crossAxisCount: Responsive.dashboardGridColumns(context),
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
     childAspectRatio: 1.3,
     mainAxisSpacing: 8,
     crossAxisSpacing: 8,
     children: items.map((i) => _countCard(i.$1, i.$2, i.$3, i.$4)).toList(),
+  );
+}
+
+/// Phones get the original single-column list of `ListTile` rows.
+/// Tablets/desktops switch to a multi-column grid of member cards so
+/// the wider screen doesn't just leave the extra space empty.
+Widget _buildMembersList(BuildContext context) {
+  if (Responsive.isPhone(context)) {
+    return Column(children: _filteredMembers.map(_buildMemberTile).toList());
+  }
+  final columns = Responsive.gridColumns(context, tablet: 2, desktop: 3);
+  return GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: _filteredMembers.length,
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: columns,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 2.6,
+    ),
+    itemBuilder: (context, i) => _buildMemberTile(_filteredMembers[i]),
   );
 }
 

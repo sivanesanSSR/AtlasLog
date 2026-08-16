@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/responsive.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -42,7 +43,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
+        child: Responsive.centered(
+          Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -122,6 +124,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
           ],
+          ),
+          maxWidth: 680,
         ),
       ),
     );
