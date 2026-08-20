@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us & Contributors - Atlas Log</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --primary: #FF7A00;
+      --text: #E0E0E0;
+      --text-muted: #9E9E9E;
+      --border: #2C2C2C;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      padding: 32px 0 24px;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      color: #FFFFFF;
+      margin-bottom: 8px;
+    }
+
+    .header .subtitle {
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      color: #FFFFFF;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    p {
+      color: var(--text);
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+
+    /* Contributor Grid */
+    .contributor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .contributor-card {
+      background: #262626;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .contributor-info h3 {
+      font-size: 1rem;
+      color: #FFFFFF;
+    }
+
+    .contributor-info p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+
+    /* 20 Testers Grid */
+    .tester-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tester-badge {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      color: #E0E0E0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+
+    .tester-badge span {
+      background: rgba(255, 122, 0, 0.15);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Header -->
+    <div class="header">
+      <h1>Atlas Log</h1>
+      <div class="subtitle">Offline Gym & Member Management</div>
+    </div>
+
+    <!-- About Section -->
+    <div class="card">
+      <h2>About Atlas Log</h2>
+      <p>
+        Atlas Log is built specifically for gym owners, personal trainers, and fitness center managers who need a fast, reliable, and privacy-focused solution to manage member records, subscription plans, and fee payments.
+      </p>
+      <p>
+        Designed with an <strong>offline-first architecture</strong>, Atlas Log ensures that all your business records stay stored directly on your device with zero cloud dependency and no unnecessary data tracking.
+      </p>
+    </div>
+
+    <!-- Contributors Section -->
+    <div class="card">
+      <h2>Contributors & Core Team</h2>
+      <p>The minds behind the development and quality assurance of Atlas Log:</p>
+
+      <div class="contributor-grid">
+        
+        <!-- Developer Entry -->
+        <div class="contributor-card">
+          <div class="avatar">D</div>
+          <div class="contributor-info">
+            <h3>Sivanesan S</h3>
+            <p>Lead Developer & Architect</p>
+          </div>
+        </div>
+
+        <!-- QA / Tester Entry -->
+        <div class="contributor-card">
+          <div class="avatar">T</div>
+          <div class="contributor-info">
+            <h3>Barathraj S</h3>
+            <p>QA & Beta Testing</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Closed Beta Testers (20 Members) -->
+    <div class="card">
+      <h2>Closed Beta Testing Team</h2>
+      <p>
+        Special thanks to our 18 early beta testers whose feedback, bug reports, and suggestions helped shape and stabilize Atlas Log:
+      </p>
+
+      <div class="tester-grid">
+        <!-- 1 to 5 -->
+        <div class="tester-badge"><span>01</span> Ashok</div> 
+        <div class="tester-badge"><span>02</span> Deepan</div>
+        <div class="tester-badge"><span>03</span> Hari</div>
+        <div class="tester-badge"><span>04</span> Nithish Kumar</div>
+        <div class="tester-badge"><span>05</span> Sneha</div>
+
+        <!-- 6 to 10 -->
+        <div class="tester-badge"><span>06</span> Ajith Kumar</div>
+        <div class="tester-badge"><span>07</span> Dilli Ganesh</div>
+        <div class="tester-badge"><span>08</span> Guna</div>
+        <div class="tester-badge"><span>09</span> Praveena</div>
+        <div class="tester-badge"><span>10</span> Ragavan</div>
+        
+        <!-- 11 to 15 -->
+        <div class="tester-badge"><span>11</span> Dinesh</div>
+        <div class="tester-badge"><span>12</span> karan </div>
+        <div class="tester-badge"><span>13</span> kesavan</div>
+        <div class="tester-badge"><span>14</span> Naveen Kumar</div>
+        <div class="tester-badge"><span>15</span> Saravana</div>
+
+        <!-- 16 to 20 -->
+        <div class="tester-badge"><span>16</span> Ragaven Jack</div>
+        <div class="tester-badge"><span>17</span> Barathraj</div>
+        <div class="tester-badge"><span>18</span> Sivanesan</div>
+      </div>
+    </div>
+
+    <!-- Open Source & Licensing -->
+    <div class="card">
+      <h2>Open Source & Technology</h2>
+      <p>
+        Atlas Log is powered by Flutter and Dart, utilizing open-source libraries for local storage, scoped device sharing, and responsive rendering.
+      </p>
+    </div>
+
+    <!-- Footer with Links -->
+    <div class="footer">
+      <p>&copy; 2026 Atlas Log. All rights reserved.</p>
+      <p style="margin-top: 6px;">
+        <a href="https://atlas-log-policy.vercel.app">Privacy Policy</a> &bull; 
+        <a href="mailto:sivanesan.s.dev@gmail.com">Contact Support</a>
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>

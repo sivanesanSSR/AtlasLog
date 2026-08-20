@@ -233,6 +233,20 @@ Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
             ),
           ),
         ),
+        // Card(
+        //   child: ListTile(
+        //     leading: const Icon(Icons.info_outline),
+        //     title: const Text('About & Contributors'),
+        //     subtitle: const Text('View developer & contributor details online'),
+        //     trailing: const Icon(Icons.open_in_new, size: 18),
+        //     onTap: () async {
+        //       final Uri url = Uri.parse('https://your-domain.vercel.app/about.html');
+        //        (await canLaunchUrl(url)) {
+        //         await launchUrl(url, mode: LaunchMode.externalApplication);
+        //     }
+        //   },
+        //   ),
+        // ),
         const SizedBox(height: 80),
       ],
     );
