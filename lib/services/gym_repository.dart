@@ -345,6 +345,41 @@ class GymRepository {
     return payment;
   }
 
+  /// Settles some or all of a member's outstanding due amount, independent
+  /// of renewal — used when a member pays off a balance mid-plan without
+  /// changing their plan, start date, or end date. Unlike renewMember(),
+  /// this only touches amountPaid/amountDue and appends a payment record.
+  Future<Member> recordDuePayment({
+    required String memberId,
+    required double amount,
+    PaymentMode mode = PaymentMode.cash,
+    DateTime? date,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError('Payment amount must be greater than zero.');
+    }
+
+    final members = await getMembers();
+    final idx = members.indexWhere((m) => m.id == memberId);
+    if (idx == -1) throw Exception('Member not found');
+
+    final current = members[idx];
+    if (amount > current.amountDue) {
+      throw ArgumentError('Payment amount cannot exceed the outstanding due of ₹${current.amountDue.toStringAsFixed(0)}.');
+    }
+
+    final updated = current.copyWith(
+      amountPaid: current.amountPaid + amount,
+      amountDue: (current.amountDue - amount).clamp(0, double.infinity),
+    );
+
+    members[idx] = updated;
+    await _writeMembers(members);
+    await addPayment(memberId: memberId, amount: amount, mode: mode, date: date);
+
+    return updated;
+  }
+
   // ---------- Dashboard aggregates ----------
 
   Future<Map<String, int>> getDashboardCounts() async {

@@ -169,6 +169,97 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     }
   }
 
+  Future<void> _payDue() async {
+    final member = _member!;
+    final amountCtrl = TextEditingController(text: member.amountDue.toStringAsFixed(0));
+    final formKey = GlobalKey<FormState>();
+    PaymentMode selectedMode = PaymentMode.cash;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Pay Due Amount'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Outstanding due: ₹${member.amountDue.toStringAsFixed(0)}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount Received',
+                    prefixText: '₹',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    final amount = double.tryParse((v ?? '').trim());
+                    if (amount == null || amount <= 0) return 'Enter a valid amount';
+                    if (amount > member.amountDue) return 'Cannot exceed ₹${member.amountDue.toStringAsFixed(0)}';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text('Payment Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: PaymentMode.values.map((mode) {
+                    return ChoiceChip(
+                      label: Text(_modeLabel(mode)),
+                      selected: selectedMode == mode,
+                      onSelected: (_) => setDialogState(() => selectedMode = mode),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Record Payment'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true) return;
+
+    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    try {
+      await ref.read(gymRepositoryProvider).recordDuePayment(
+            memberId: member.id,
+            amount: amount,
+            mode: selectedMode,
+          );
+      _wasChanged = true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('₹${amount.toStringAsFixed(0)} payment recorded.')),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to record payment: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -279,7 +370,21 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
             _infoRow(Icons.event_outlined, 'Joined ${m.startDate.toLocal().toString().split(' ')[0]}'),
             _infoRow(Icons.event_busy_outlined, 'Expires ${m.endDate.toLocal().toString().split(' ')[0]}'),
             if (!m.isPaid)
-              _infoRow(Icons.currency_rupee, 'Due: ₹${m.amountDue.toStringAsFixed(0)}', color: Colors.red),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _infoRow(Icons.currency_rupee, 'Due: ₹${m.amountDue.toStringAsFixed(0)}', color: Colors.red),
+                    ),
+                    TextButton.icon(
+                      onPressed: _payDue,
+                      icon: const Icon(Icons.payments_outlined, size: 18),
+                      label: const Text('Pay Due'),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
