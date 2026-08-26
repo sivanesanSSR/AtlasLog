@@ -5,6 +5,7 @@ import '../models/gym_profile.dart';
 import '../models/plan.dart';
 import '../models/member.dart';
 import '../models/payment.dart';
+import '../utils/date_utils.dart';
 import 'local_storage_service.dart';
 import 'notification_service.dart';
 
@@ -140,7 +141,7 @@ class GymRepository {
     }
 
     final start = paidOnDate ?? DateTime.now();
-    final endDate = DateTime(start.year, start.month + plan.durationMonths, start.day);
+    final endDate = addMonthsClamped(start, plan.durationMonths);
     final price = plan.price;
     final id = _uuid.v4();
 
@@ -206,7 +207,7 @@ class GymRepository {
     final current = members[idx];
     final effectiveRenewalDate = renewalDate ?? DateTime.now();
     final base = current.endDate.isAfter(effectiveRenewalDate) ? current.endDate : effectiveRenewalDate;
-    final newEndDate = DateTime(base.year, base.month + plan.durationMonths, base.day);
+    final newEndDate = addMonthsClamped(base, plan.durationMonths);
 
     final updated = current.copyWith(
       planId: plan.id,
@@ -378,6 +379,76 @@ class GymRepository {
     await addPayment(memberId: memberId, amount: amount, mode: mode, date: date);
 
     return updated;
+  }
+
+  /// Corrects a previously recorded payment (e.g. a typo'd amount or wrong
+  /// mode). Adjusts the owning member's amountPaid/amountDue by the delta
+  /// between the old and new amount so the due balance stays consistent —
+  /// does not touch plan/dates.
+  Future<Member> editPayment({
+    required String paymentId,
+    required double newAmount,
+    PaymentMode? mode,
+    DateTime? date,
+  }) async {
+    if (newAmount <= 0) {
+      throw ArgumentError('Amount must be greater than zero.');
+    }
+
+    final payments = await getPayments();
+    final pIdx = payments.indexWhere((p) => p.id == paymentId);
+    if (pIdx == -1) throw Exception('Payment not found');
+    final oldPayment = payments[pIdx];
+    final delta = newAmount - oldPayment.amount;
+
+    final members = await getMembers();
+    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
+    if (mIdx == -1) throw Exception('Member not found');
+    final member = members[mIdx];
+
+    final updatedMember = member.copyWith(
+      amountPaid: (member.amountPaid + delta).clamp(0, double.infinity),
+      amountDue: (member.amountDue - delta).clamp(0, double.infinity),
+    );
+    members[mIdx] = updatedMember;
+    await _writeMembers(members);
+
+    payments[pIdx] = Payment(
+      id: oldPayment.id,
+      memberId: oldPayment.memberId,
+      amount: newAmount,
+      date: date ?? oldPayment.date,
+      mode: mode ?? oldPayment.mode,
+    );
+    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
+
+    return updatedMember;
+  }
+
+  /// Removes a payment entered by mistake and reopens the corresponding
+  /// amount as due on the member. Does not touch plan/dates.
+  Future<Member> deletePayment(String paymentId) async {
+    final payments = await getPayments();
+    final pIdx = payments.indexWhere((p) => p.id == paymentId);
+    if (pIdx == -1) throw Exception('Payment not found');
+    final oldPayment = payments[pIdx];
+
+    final members = await getMembers();
+    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
+    if (mIdx == -1) throw Exception('Member not found');
+    final member = members[mIdx];
+
+    final updatedMember = member.copyWith(
+      amountPaid: (member.amountPaid - oldPayment.amount).clamp(0, double.infinity),
+      amountDue: (member.amountDue + oldPayment.amount).clamp(0, double.infinity),
+    );
+    members[mIdx] = updatedMember;
+    await _writeMembers(members);
+
+    payments.removeAt(pIdx);
+    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
+
+    return updatedMember;
   }
 
   // ---------- Dashboard aggregates ----------

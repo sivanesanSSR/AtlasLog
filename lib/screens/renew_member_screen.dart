@@ -6,6 +6,7 @@ import '../models/plan.dart';
 import '../models/payment.dart';
 import '../utils/status_colors.dart';
 import '../utils/responsive.dart';
+import '../utils/date_utils.dart';
 
 class RenewMemberScreen extends ConsumerStatefulWidget {
   final Member member;
@@ -83,7 +84,7 @@ class _RenewMemberScreenState extends ConsumerState<RenewMemberScreen> {
         ? widget.member.endDate 
         : _renewalDate;
     final months = _selectedPlan?.durationMonths ?? 1;
-    return DateTime(base.year, base.month + months, base.day);
+    return addMonthsClamped(base, months);
   }
 
   Future<void> _submit() async {

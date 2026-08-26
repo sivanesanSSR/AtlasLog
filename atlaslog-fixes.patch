@@ -1,0 +1,324 @@
+diff --git a/lib/screens/member_detail_screen.dart b/lib/screens/member_detail_screen.dart
+index 7e5e588..1c43cb5 100644
+--- a/lib/screens/member_detail_screen.dart
++++ b/lib/screens/member_detail_screen.dart
+@@ -169,6 +169,97 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
+     }
+   }
+ 
++  Future<void> _payDue() async {
++    final member = _member!;
++    final amountCtrl = TextEditingController(text: member.amountDue.toStringAsFixed(0));
++    final formKey = GlobalKey<FormState>();
++    PaymentMode selectedMode = PaymentMode.cash;
++
++    final result = await showDialog<bool>(
++      context: context,
++      builder: (ctx) => StatefulBuilder(
++        builder: (ctx, setDialogState) => AlertDialog(
++          title: const Text('Pay Due Amount'),
++          content: Form(
++            key: formKey,
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Text(
++                  'Outstanding due: ₹${member.amountDue.toStringAsFixed(0)}',
++                  style: TextStyle(color: Colors.grey[600]),
++                ),
++                const SizedBox(height: 16),
++                TextFormField(
++                  controller: amountCtrl,
++                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
++                  autofocus: true,
++                  decoration: const InputDecoration(
++                    labelText: 'Amount Received',
++                    prefixText: '₹',
++                    border: OutlineInputBorder(),
++                  ),
++                  validator: (v) {
++                    final amount = double.tryParse((v ?? '').trim());
++                    if (amount == null || amount <= 0) return 'Enter a valid amount';
++                    if (amount > member.amountDue) return 'Cannot exceed ₹${member.amountDue.toStringAsFixed(0)}';
++                    return null;
++                  },
++                ),
++                const SizedBox(height: 16),
++                const Text('Payment Mode', style: TextStyle(fontWeight: FontWeight.bold)),
++                const SizedBox(height: 8),
++                Wrap(
++                  spacing: 8,
++                  children: PaymentMode.values.map((mode) {
++                    return ChoiceChip(
++                      label: Text(_modeLabel(mode)),
++                      selected: selectedMode == mode,
++                      onSelected: (_) => setDialogState(() => selectedMode = mode),
++                    );
++                  }).toList(),
++                ),
++              ],
++            ),
++          ),
++          actions: [
++            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
++            ElevatedButton(
++              onPressed: () {
++                if (!formKey.currentState!.validate()) return;
++                Navigator.pop(ctx, true);
++              },
++              child: const Text('Record Payment'),
++            ),
++          ],
++        ),
++      ),
++    );
++
++    if (result != true) return;
++
++    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
++    try {
++      await ref.read(gymRepositoryProvider).recordDuePayment(
++            memberId: member.id,
++            amount: amount,
++            mode: selectedMode,
++          );
++      _wasChanged = true;
++      if (!mounted) return;
++      ScaffoldMessenger.of(context).showSnackBar(
++        SnackBar(content: Text('₹${amount.toStringAsFixed(0)} payment recorded.')),
++      );
++      _load();
++    } catch (e) {
++      if (!mounted) return;
++      ScaffoldMessenger.of(context).showSnackBar(
++        SnackBar(content: Text('Failed to record payment: $e')),
++      );
++    }
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     return PopScope(
+@@ -279,7 +370,21 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
+             _infoRow(Icons.event_outlined, 'Joined ${m.startDate.toLocal().toString().split(' ')[0]}'),
+             _infoRow(Icons.event_busy_outlined, 'Expires ${m.endDate.toLocal().toString().split(' ')[0]}'),
+             if (!m.isPaid)
+-              _infoRow(Icons.currency_rupee, 'Due: ₹${m.amountDue.toStringAsFixed(0)}', color: Colors.red),
++              Padding(
++                padding: const EdgeInsets.only(top: 6),
++                child: Row(
++                  children: [
++                    Expanded(
++                      child: _infoRow(Icons.currency_rupee, 'Due: ₹${m.amountDue.toStringAsFixed(0)}', color: Colors.red),
++                    ),
++                    TextButton.icon(
++                      onPressed: _payDue,
++                      icon: const Icon(Icons.payments_outlined, size: 18),
++                      label: const Text('Pay Due'),
++                    ),
++                  ],
++                ),
++              ),
+           ],
+         ),
+       ),
+@@ -346,4 +451,4 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
+         return 'Other';
+     }
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/lib/screens/renew_member_screen.dart b/lib/screens/renew_member_screen.dart
+index 7d3db6a..e633dcf 100644
+--- a/lib/screens/renew_member_screen.dart
++++ b/lib/screens/renew_member_screen.dart
+@@ -6,6 +6,7 @@ import '../models/plan.dart';
+ import '../models/payment.dart';
+ import '../utils/status_colors.dart';
+ import '../utils/responsive.dart';
++import '../utils/date_utils.dart';
+ 
+ class RenewMemberScreen extends ConsumerStatefulWidget {
+   final Member member;
+@@ -83,7 +84,7 @@ class _RenewMemberScreenState extends ConsumerState<RenewMemberScreen> {
+         ? widget.member.endDate 
+         : _renewalDate;
+     final months = _selectedPlan?.durationMonths ?? 1;
+-    return DateTime(base.year, base.month + months, base.day);
++    return addMonthsClamped(base, months);
+   }
+ 
+   Future<void> _submit() async {
+diff --git a/lib/services/gym_repository.dart b/lib/services/gym_repository.dart
+index c1ddd0a..5d5d35f 100644
+--- a/lib/services/gym_repository.dart
++++ b/lib/services/gym_repository.dart
+@@ -5,6 +5,7 @@ import '../models/gym_profile.dart';
+ import '../models/plan.dart';
+ import '../models/member.dart';
+ import '../models/payment.dart';
++import '../utils/date_utils.dart';
+ import 'local_storage_service.dart';
+ import 'notification_service.dart';
+ 
+@@ -140,7 +141,7 @@ class GymRepository {
+     }
+ 
+     final start = paidOnDate ?? DateTime.now();
+-    final endDate = DateTime(start.year, start.month + plan.durationMonths, start.day);
++    final endDate = addMonthsClamped(start, plan.durationMonths);
+     final price = plan.price;
+     final id = _uuid.v4();
+ 
+@@ -206,7 +207,7 @@ class GymRepository {
+     final current = members[idx];
+     final effectiveRenewalDate = renewalDate ?? DateTime.now();
+     final base = current.endDate.isAfter(effectiveRenewalDate) ? current.endDate : effectiveRenewalDate;
+-    final newEndDate = DateTime(base.year, base.month + plan.durationMonths, base.day);
++    final newEndDate = addMonthsClamped(base, plan.durationMonths);
+ 
+     final updated = current.copyWith(
+       planId: plan.id,
+@@ -345,6 +346,111 @@ class GymRepository {
+     return payment;
+   }
+ 
++  /// Settles some or all of a member's outstanding due amount, independent
++  /// of renewal — used when a member pays off a balance mid-plan without
++  /// changing their plan, start date, or end date. Unlike renewMember(),
++  /// this only touches amountPaid/amountDue and appends a payment record.
++  Future<Member> recordDuePayment({
++    required String memberId,
++    required double amount,
++    PaymentMode mode = PaymentMode.cash,
++    DateTime? date,
++  }) async {
++    if (amount <= 0) {
++      throw ArgumentError('Payment amount must be greater than zero.');
++    }
++
++    final members = await getMembers();
++    final idx = members.indexWhere((m) => m.id == memberId);
++    if (idx == -1) throw Exception('Member not found');
++
++    final current = members[idx];
++    if (amount > current.amountDue) {
++      throw ArgumentError('Payment amount cannot exceed the outstanding due of ₹${current.amountDue.toStringAsFixed(0)}.');
++    }
++
++    final updated = current.copyWith(
++      amountPaid: current.amountPaid + amount,
++      amountDue: (current.amountDue - amount).clamp(0, double.infinity),
++    );
++
++    members[idx] = updated;
++    await _writeMembers(members);
++    await addPayment(memberId: memberId, amount: amount, mode: mode, date: date);
++
++    return updated;
++  }
++
++  /// Corrects a previously recorded payment (e.g. a typo'd amount or wrong
++  /// mode). Adjusts the owning member's amountPaid/amountDue by the delta
++  /// between the old and new amount so the due balance stays consistent —
++  /// does not touch plan/dates.
++  Future<Member> editPayment({
++    required String paymentId,
++    required double newAmount,
++    PaymentMode? mode,
++    DateTime? date,
++  }) async {
++    if (newAmount <= 0) {
++      throw ArgumentError('Amount must be greater than zero.');
++    }
++
++    final payments = await getPayments();
++    final pIdx = payments.indexWhere((p) => p.id == paymentId);
++    if (pIdx == -1) throw Exception('Payment not found');
++    final oldPayment = payments[pIdx];
++    final delta = newAmount - oldPayment.amount;
++
++    final members = await getMembers();
++    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
++    if (mIdx == -1) throw Exception('Member not found');
++    final member = members[mIdx];
++
++    final updatedMember = member.copyWith(
++      amountPaid: (member.amountPaid + delta).clamp(0, double.infinity),
++      amountDue: (member.amountDue - delta).clamp(0, double.infinity),
++    );
++    members[mIdx] = updatedMember;
++    await _writeMembers(members);
++
++    payments[pIdx] = Payment(
++      id: oldPayment.id,
++      memberId: oldPayment.memberId,
++      amount: newAmount,
++      date: date ?? oldPayment.date,
++      mode: mode ?? oldPayment.mode,
++    );
++    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
++
++    return updatedMember;
++  }
++
++  /// Removes a payment entered by mistake and reopens the corresponding
++  /// amount as due on the member. Does not touch plan/dates.
++  Future<Member> deletePayment(String paymentId) async {
++    final payments = await getPayments();
++    final pIdx = payments.indexWhere((p) => p.id == paymentId);
++    if (pIdx == -1) throw Exception('Payment not found');
++    final oldPayment = payments[pIdx];
++
++    final members = await getMembers();
++    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
++    if (mIdx == -1) throw Exception('Member not found');
++    final member = members[mIdx];
++
++    final updatedMember = member.copyWith(
++      amountPaid: (member.amountPaid - oldPayment.amount).clamp(0, double.infinity),
++      amountDue: (member.amountDue + oldPayment.amount).clamp(0, double.infinity),
++    );
++    members[mIdx] = updatedMember;
++    await _writeMembers(members);
++
++    payments.removeAt(pIdx);
++    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
++
++    return updatedMember;
++  }
++
+   // ---------- Dashboard aggregates ----------
+ 
+   Future<Map<String, int>> getDashboardCounts() async {
+diff --git a/lib/utils/date_utils.dart b/lib/utils/date_utils.dart
+new file mode 100644
+index 0000000..4b26581
+--- /dev/null
++++ b/lib/utils/date_utils.dart
+@@ -0,0 +1,23 @@
++/// Adds [months] calendar months to [date], clamping the resulting day to
++/// the last valid day of the target month when the original day doesn't
++/// exist there.
++///
++/// Plain `DateTime(date.year, date.month + months, date.day)` silently
++/// overflows in that case — Dart's DateTime constructor rolls excess days
++/// into the *following* month rather than clamping. e.g. Jan 31 + 1 month
++/// becomes March 3 instead of Feb 28. That's wrong for plan expiry math:
++/// members who join or renew on the 29th/30th/31st would silently get a
++/// few extra free days every cycle, compounding on each renewal.
++///
++/// This clamps instead, matching how billing systems normally handle
++/// month-end anchoring: Jan 31 + 1 month -> Feb 28 (or Feb 29 in a leap
++/// year), Mar 31 + 1 month -> Apr 30, etc.
++DateTime addMonthsClamped(DateTime date, int months) {
++  final totalMonths = date.month - 1 + months;
++  final year = date.year + totalMonths ~/ 12;
++  final month = totalMonths % 12 + 1;
++  // Day 0 of the month after [month] is the last day of [month] itself.
++  final lastDayOfTargetMonth = DateTime(year, month + 1, 0).day;
++  final day = date.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : date.day;
++  return DateTime(year, month, day);
++}
