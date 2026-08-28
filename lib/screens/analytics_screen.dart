@@ -358,7 +358,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildStatusBreakdown() {
-    int active = 0, expiringSoon = 0, expired = 0;
+    int active = 0, expiringSoon = 0, expired = 0, frozen = 0;
     for (final m in _members) {
       switch (m.status) {
         case MemberStatus.active:
@@ -369,6 +369,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           break;
         case MemberStatus.expired:
           expired++;
+          break;
+        case MemberStatus.frozen:
+          frozen++;
           break;
       }
     }
@@ -406,6 +409,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             bar('Active', active, AppTheme.success),
             bar('Expiring Soon', expiringSoon, AppTheme.warning),
             bar('Expired', expired, AppTheme.danger),
+            if (frozen > 0) bar('Frozen', frozen, Colors.blueAccent),
           ],
         ),
       ),

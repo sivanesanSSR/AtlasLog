@@ -132,6 +132,42 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     _load();
   }
 
+  Future<void> _toggleFreeze() async {
+    final m = _member!;
+    final repo = ref.read(gymRepositoryProvider);
+    try {
+      if (m.isFrozen) {
+        await repo.unfreezeMember(m.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Membership resumed — expiry date shifted forward by the frozen days.')),
+        );
+      } else {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Freeze Membership'),
+            content: const Text('This pauses the expiry countdown until you unfreeze. Continue?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Freeze')),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+
+        await repo.freezeMember(m.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership frozen.')));
+      }
+      _wasChanged = true;
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
   Future<void> _deleteMember() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -541,7 +577,13 @@ Mode: ${_modeLabel(payment.mode)}
             _infoRow(Icons.phone_outlined, m.mobile),
             _infoRow(Icons.card_membership_outlined, _plan?.name ?? 'Unknown plan'),
             _infoRow(Icons.event_outlined, 'Joined ${m.startDate.toLocal().toString().split(' ')[0]}'),
-            _infoRow(Icons.event_busy_outlined, 'Expires ${m.endDate.toLocal().toString().split(' ')[0]}'),
+            _infoRow(
+              Icons.event_busy_outlined,
+              m.isFrozen ? 'Frozen since ${m.frozenSince!.toLocal().toString().split(' ')[0]}' : 'Expires ${m.endDate.toLocal().toString().split(' ')[0]}',
+              color: m.isFrozen ? Colors.blueAccent : null,
+            ),
+            if (m.creditBalance > 0)
+              _infoRow(Icons.savings_outlined, 'Credit: ₹${m.creditBalance.toStringAsFixed(0)} (applied at next renewal)', color: Colors.blueAccent),
             if (!m.isPaid)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -578,14 +620,25 @@ Mode: ${_modeLabel(payment.mode)}
   }
 
   Widget _buildActionRow() {
+    final m = _member!;
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _renewMember,
+            onPressed: m.isFrozen ? null : _renewMember,
             icon: const Icon(Icons.autorenew),
             label: const Text('Renew Plan'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _toggleFreeze,
+            icon: Icon(m.isFrozen ? Icons.play_arrow : Icons.pause, size: 18),
+            label: Text(m.isFrozen ? 'Unfreeze Membership' : 'Freeze Membership'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.blueAccent),
           ),
         ),
         const SizedBox(height: 10),

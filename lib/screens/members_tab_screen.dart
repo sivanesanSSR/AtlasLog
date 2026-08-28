@@ -23,6 +23,8 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
   List<Member> _filtered = [];
   bool _loading = true;
   _SortOption _sortOption = _SortOption.nameAsc;
+  bool _selectionMode = false;
+  final Set<String> _selectedIds = {};
 
   @override
   void initState() {
@@ -92,6 +94,57 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
     }
   }
 
+  void _enterSelectionMode(String memberId) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.add(memberId);
+    });
+  }
+
+  void _toggleSelection(String memberId) {
+    setState(() {
+      if (_selectedIds.contains(memberId)) {
+        _selectedIds.remove(memberId);
+        if (_selectedIds.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIds.add(memberId);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Members'),
+        content: Text('Delete $count member${count == 1 ? '' : 's'}? This removes their profile, photo, and payment history permanently.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final repo = ref.read(gymRepositoryProvider);
+    for (final id in _selectedIds.toList()) {
+      await repo.deleteMember(id);
+    }
+    _clearSelection();
+    load();
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -145,7 +198,29 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
                 maxWidth: Responsive.maxContentWidth,
               ),
               const SizedBox(height: 16),
-              Responsive.centered(
+              if (_selectionMode)
+                Responsive.centered(
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _clearSelection,
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Cancel'),
+                      ),
+                      const Spacer(),
+                      Text('${_selectedIds.length} selected', style: TextStyle(color: theme.textTheme.bodySmall?.color)),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _selectedIds.isEmpty ? null : _deleteSelected,
+                        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                        label: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                  maxWidth: Responsive.maxContentWidth,
+                )
+              else
+                Responsive.centered(
                 Row(
                   children: [
                     Text(
@@ -218,9 +293,13 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
 
   Widget _buildTile(Member m) {
     final color = statusColor(m.status);
+    final isSelected = _selectedIds.contains(m.id);
     return Card(
+      color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : null,
       child: ListTile(
-        leading: _buildAvatar(m, color),
+        leading: _selectionMode
+            ? Checkbox(value: isSelected, onChanged: (_) => _toggleSelection(m.id))
+            : _buildAvatar(m, color),
         title: Text(m.name),
         subtitle: Text('${m.memberCode} · ${m.mobile}'),
         trailing: Column(
@@ -232,11 +311,16 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
           ],
         ),
         onTap: () async {
+          if (_selectionMode) {
+            _toggleSelection(m.id);
+            return;
+          }
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => MemberDetailScreen(memberId: m.id)),
           );
           load();
         },
+        onLongPress: _selectionMode ? null : () => _enterSelectionMode(m.id),
       ),
     );
   }

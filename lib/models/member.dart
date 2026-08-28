@@ -1,4 +1,4 @@
-enum MemberStatus { active, expiringSoon, expired }
+enum MemberStatus { active, expiringSoon, expired, frozen }
 
 class Member {
   final String id;
@@ -12,6 +12,8 @@ class Member {
   final double amountDue;
   final DateTime updatedAt;
   final String? photoPath; // relative path within local storage, e.g. "member_photos/<uuid>.jpg"
+  final double creditBalance; // overpayment carried forward, applied automatically on next renewal
+  final DateTime? frozenSince; // non-null while the membership is paused; null otherwise
 
   Member({
     required this.id,
@@ -25,12 +27,18 @@ class Member {
     required this.amountDue,
     required this.updatedAt,
     this.photoPath,
+    this.creditBalance = 0,
+    this.frozenSince,
   });
 
   bool get isPaid => amountDue <= 0;
+  bool get isFrozen => frozenSince != null;
 
-  /// Status is always computed live from endDate, never stored as a fixed value.
+  /// Status is always computed live from endDate, never stored as a fixed
+  /// value — except while frozen, where the countdown is intentionally
+  /// paused, so expiry/expiringSoon shouldn't apply until unfrozen.
   MemberStatus get status {
+    if (isFrozen) return MemberStatus.frozen;
     final daysLeft = endDate.difference(DateTime.now()).inDays;
     if (daysLeft < 0) return MemberStatus.expired;
     if (daysLeft <= 3) return MemberStatus.expiringSoon;
@@ -50,6 +58,9 @@ class Member {
       amountDue: (json['amount_due'] as num).toDouble(),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       photoPath: json['photo_path'] as String?,
+      // Both default safely for members saved before these fields existed.
+      creditBalance: (json['credit_balance'] as num?)?.toDouble() ?? 0,
+      frozenSince: json['frozen_since'] != null ? DateTime.parse(json['frozen_since'] as String) : null,
     );
   }
 
@@ -66,6 +77,8 @@ class Member {
       'amount_due': amountDue,
       'updated_at': updatedAt.toIso8601String(),
       'photo_path': photoPath,
+      'credit_balance': creditBalance,
+      'frozen_since': frozenSince?.toIso8601String(),
     };
   }
 
@@ -79,6 +92,9 @@ class Member {
     double? amountDue,
     String? photoPath,
     bool clearPhoto = false,
+    double? creditBalance,
+    DateTime? frozenSince,
+    bool clearFrozenSince = false,
   }) {
     return Member(
       id: id,
@@ -92,6 +108,8 @@ class Member {
       amountDue: amountDue ?? this.amountDue,
       updatedAt: DateTime.now(),
       photoPath: clearPhoto ? null : (photoPath ?? this.photoPath),
+      creditBalance: creditBalance ?? this.creditBalance,
+      frozenSince: clearFrozenSince ? null : (frozenSince ?? this.frozenSince),
     );
   }
 }

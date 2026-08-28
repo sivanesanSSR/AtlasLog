@@ -158,10 +158,15 @@ class GymRepository {
       planId: plan.id,
       startDate: start,
       endDate: endDate,
-      amountPaid: amountPaid,
+      // If the owner pays more than the plan price up front, the excess is
+      // kept as credit rather than silently discarded — it's applied
+      // automatically toward whatever the member owes at their next
+      // renewal instead of clamping and losing track of it.
+      amountPaid: amountPaid > price ? price : amountPaid,
       amountDue: (price - amountPaid).clamp(0, double.infinity),
       updatedAt: DateTime.now(),
       photoPath: photoPath,
+      creditBalance: amountPaid > price ? amountPaid - price : 0,
     );
 
     members.add(member);
@@ -209,12 +214,19 @@ class GymRepository {
     final base = current.endDate.isAfter(effectiveRenewalDate) ? current.endDate : effectiveRenewalDate;
     final newEndDate = addMonthsClamped(base, plan.durationMonths);
 
+    // Any credit carried forward from a previous overpayment counts as
+    // already paid toward this cycle before working out what's still due.
+    final totalAvailable = amountPaid + current.creditBalance;
+    final newAmountDue = (plan.price - totalAvailable).clamp(0, double.infinity);
+    final newCreditBalance = totalAvailable > plan.price ? totalAvailable - plan.price : 0.0;
+
     final updated = current.copyWith(
       planId: plan.id,
       startDate: effectiveRenewalDate,
       endDate: newEndDate,
-      amountPaid: amountPaid,
-      amountDue: (plan.price - amountPaid).clamp(0, double.infinity),
+      amountPaid: totalAvailable > plan.price ? plan.price : totalAvailable,
+      amountDue: newAmountDue,
+      creditBalance: newCreditBalance,
     );
 
     members[idx] = updated;
@@ -233,6 +245,58 @@ class GymRepository {
       );
     } catch (_) {
       // Non-fatal — renewal is saved; reminder just wasn't rescheduled.
+    }
+
+    return updated;
+  }
+
+  /// Pauses a member's plan countdown (e.g. they're travelling or injured).
+  /// While frozen, Member.status reports `frozen` instead of computing
+  /// active/expiringSoon/expired from endDate.
+  Future<Member> freezeMember(String memberId) async {
+    final members = await getMembers();
+    final idx = members.indexWhere((m) => m.id == memberId);
+    if (idx == -1) throw Exception('Member not found');
+    if (members[idx].isFrozen) return members[idx];
+
+    final updated = members[idx].copyWith(frozenSince: DateTime.now());
+    members[idx] = updated;
+    await _writeMembers(members);
+
+    // No point keeping an expiry reminder scheduled while the countdown
+    // itself is paused — it'll be rescheduled against the shifted date
+    // once unfrozen.
+    await _notifications.cancelExpiryReminder(memberId);
+
+    return updated;
+  }
+
+  /// Resumes a frozen member's plan, shifting endDate forward by however
+  /// long they were frozen so they don't lose the paused days.
+  Future<Member> unfreezeMember(String memberId) async {
+    final members = await getMembers();
+    final idx = members.indexWhere((m) => m.id == memberId);
+    if (idx == -1) throw Exception('Member not found');
+
+    final current = members[idx];
+    if (!current.isFrozen) return current;
+
+    final frozenDuration = DateTime.now().difference(current.frozenSince!);
+    final updated = current.copyWith(
+      endDate: current.endDate.add(frozenDuration),
+      clearFrozenSince: true,
+    );
+    members[idx] = updated;
+    await _writeMembers(members);
+
+    try {
+      await _notifications.scheduleExpiryReminder(
+        memberId: updated.id,
+        memberName: updated.name,
+        endDate: updated.endDate,
+      );
+    } catch (_) {
+      // Non-fatal.
     }
 
     return updated;
@@ -449,76 +513,6 @@ class GymRepository {
     return updated;
   }
 
-  /// Corrects a previously recorded payment (e.g. a typo'd amount or wrong
-  /// mode). Adjusts the owning member's amountPaid/amountDue by the delta
-  /// between the old and new amount so the due balance stays consistent —
-  /// does not touch plan/dates.
-  Future<Member> editPayment({
-    required String paymentId,
-    required double newAmount,
-    PaymentMode? mode,
-    DateTime? date,
-  }) async {
-    if (newAmount <= 0) {
-      throw ArgumentError('Amount must be greater than zero.');
-    }
-
-    final payments = await getPayments();
-    final pIdx = payments.indexWhere((p) => p.id == paymentId);
-    if (pIdx == -1) throw Exception('Payment not found');
-    final oldPayment = payments[pIdx];
-    final delta = newAmount - oldPayment.amount;
-
-    final members = await getMembers();
-    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
-    if (mIdx == -1) throw Exception('Member not found');
-    final member = members[mIdx];
-
-    final updatedMember = member.copyWith(
-      amountPaid: (member.amountPaid + delta).clamp(0, double.infinity),
-      amountDue: (member.amountDue - delta).clamp(0, double.infinity),
-    );
-    members[mIdx] = updatedMember;
-    await _writeMembers(members);
-
-    payments[pIdx] = Payment(
-      id: oldPayment.id,
-      memberId: oldPayment.memberId,
-      amount: newAmount,
-      date: date ?? oldPayment.date,
-      mode: mode ?? oldPayment.mode,
-    );
-    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
-
-    return updatedMember;
-  }
-
-  /// Removes a payment entered by mistake and reopens the corresponding
-  /// amount as due on the member. Does not touch plan/dates.
-  Future<Member> deletePayment(String paymentId) async {
-    final payments = await getPayments();
-    final pIdx = payments.indexWhere((p) => p.id == paymentId);
-    if (pIdx == -1) throw Exception('Payment not found');
-    final oldPayment = payments[pIdx];
-
-    final members = await getMembers();
-    final mIdx = members.indexWhere((m) => m.id == oldPayment.memberId);
-    if (mIdx == -1) throw Exception('Member not found');
-    final member = members[mIdx];
-
-    final updatedMember = member.copyWith(
-      amountPaid: (member.amountPaid - oldPayment.amount).clamp(0, double.infinity),
-      amountDue: (member.amountDue + oldPayment.amount).clamp(0, double.infinity),
-    );
-    members[mIdx] = updatedMember;
-    await _writeMembers(members);
-
-    payments.removeAt(pIdx);
-    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
-
-    return updatedMember;
-  }
-
   // ---------- Dashboard aggregates ----------
 
   Future<Map<String, int>> getDashboardCounts() async {
@@ -535,6 +529,11 @@ class GymRepository {
           break;
         case MemberStatus.expired:
           expired++;
+          break;
+        case MemberStatus.frozen:
+          // Frozen members are intentionally excluded from active/
+          // expiring/expired counts — their countdown is paused, so none
+          // of those buckets apply until they're unfrozen.
           break;
       }
       if (m.isPaid) {
