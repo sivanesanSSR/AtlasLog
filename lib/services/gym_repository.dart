@@ -163,7 +163,7 @@ class GymRepository {
       // automatically toward whatever the member owes at their next
       // renewal instead of clamping and losing track of it.
       amountPaid: amountPaid > price ? price : amountPaid,
-      amountDue: (price - amountPaid).clamp(0, double.infinity),
+      amountDue: (price - amountPaid).clamp(0, double.infinity).toDouble(),
       updatedAt: DateTime.now(),
       photoPath: photoPath,
       creditBalance: amountPaid > price ? amountPaid - price : 0,
@@ -217,7 +217,7 @@ class GymRepository {
     // Any credit carried forward from a previous overpayment counts as
     // already paid toward this cycle before working out what's still due.
     final totalAvailable = amountPaid + current.creditBalance;
-    final newAmountDue = (plan.price - totalAvailable).clamp(0, double.infinity);
+    final newAmountDue = (plan.price - totalAvailable).clamp(0, double.infinity).toDouble();
     final newCreditBalance = totalAvailable > plan.price ? totalAvailable - plan.price : 0.0;
 
     final updated = current.copyWith(
@@ -444,8 +444,8 @@ class GymRepository {
       if (!old.date.isBefore(member.startDate)) {
         final delta = amount - old.amount;
         members[mIdx] = member.copyWith(
-          amountPaid: (member.amountPaid + delta).clamp(0, double.infinity),
-          amountDue: (member.amountDue - delta).clamp(0, double.infinity),
+          amountPaid: (member.amountPaid + delta).clamp(0, double.infinity).toDouble(),
+          amountDue: (member.amountDue - delta).clamp(0, double.infinity).toDouble(),
         );
         await _writeMembers(members);
       }
@@ -470,8 +470,8 @@ class GymRepository {
       final member = members[mIdx];
       if (!removed.date.isBefore(member.startDate)) {
         members[mIdx] = member.copyWith(
-          amountPaid: (member.amountPaid - removed.amount).clamp(0, double.infinity),
-          amountDue: (member.amountDue + removed.amount).clamp(0, double.infinity),
+          amountPaid: (member.amountPaid - removed.amount).clamp(0, double.infinity).toDouble(),
+          amountDue: (member.amountDue + removed.amount).clamp(0, double.infinity).toDouble(),
         );
         await _writeMembers(members);
       }
@@ -503,7 +503,7 @@ class GymRepository {
 
     final updated = current.copyWith(
       amountPaid: current.amountPaid + amount,
-      amountDue: (current.amountDue - amount).clamp(0, double.infinity),
+      amountDue: (current.amountDue - amount).clamp(0, double.infinity).toDouble(),
     );
 
     members[idx] = updated;
