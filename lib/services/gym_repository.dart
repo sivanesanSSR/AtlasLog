@@ -346,6 +346,74 @@ class GymRepository {
     return payment;
   }
 
+  /// Corrects a mis-entered payment (wrong amount/mode/date typed in by
+  /// mistake). If the payment belongs to the member's CURRENT plan cycle
+  /// (i.e. it was made on/after their current startDate), the member's
+  /// running amountPaid/amountDue are adjusted by the difference so the
+  /// due balance stays accurate. Payments from a *previous* cycle (before
+  /// the latest renewal) are historical — amountPaid/amountDue always
+  /// track the current cycle only, so editing an older payment updates
+  /// the log entry but intentionally leaves today's due balance alone.
+  Future<Payment> updatePayment({
+    required String paymentId,
+    required double amount,
+    required PaymentMode mode,
+    required DateTime date,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError('Payment amount must be greater than zero.');
+    }
+
+    final payments = await getPayments();
+    final idx = payments.indexWhere((p) => p.id == paymentId);
+    if (idx == -1) throw Exception('Payment not found');
+    final old = payments[idx];
+
+    final updated = Payment(id: old.id, memberId: old.memberId, amount: amount, date: date, mode: mode);
+    payments[idx] = updated;
+    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
+
+    final members = await getMembers();
+    final mIdx = members.indexWhere((m) => m.id == old.memberId);
+    if (mIdx != -1) {
+      final member = members[mIdx];
+      if (!old.date.isBefore(member.startDate)) {
+        final delta = amount - old.amount;
+        members[mIdx] = member.copyWith(
+          amountPaid: (member.amountPaid + delta).clamp(0, double.infinity),
+          amountDue: (member.amountDue - delta).clamp(0, double.infinity),
+        );
+        await _writeMembers(members);
+      }
+    }
+
+    return updated;
+  }
+
+  /// Removes a mis-entered payment entirely. Same current-cycle-only rule
+  /// as updatePayment() for adjusting the member's due balance.
+  Future<void> deletePayment(String paymentId) async {
+    final payments = await getPayments();
+    final idx = payments.indexWhere((p) => p.id == paymentId);
+    if (idx == -1) throw Exception('Payment not found');
+    final removed = payments[idx];
+    payments.removeAt(idx);
+    await _storage.writeFile('payments.json', jsonEncode(payments.map((p) => p.toJson()).toList()));
+
+    final members = await getMembers();
+    final mIdx = members.indexWhere((m) => m.id == removed.memberId);
+    if (mIdx != -1) {
+      final member = members[mIdx];
+      if (!removed.date.isBefore(member.startDate)) {
+        members[mIdx] = member.copyWith(
+          amountPaid: (member.amountPaid - removed.amount).clamp(0, double.infinity),
+          amountDue: (member.amountDue + removed.amount).clamp(0, double.infinity),
+        );
+        await _writeMembers(members);
+      }
+    }
+  }
+
   /// Settles some or all of a member's outstanding due amount, independent
   /// of renewal — used when a member pays off a balance mid-plan without
   /// changing their plan, start date, or end date. Unlike renewMember(),

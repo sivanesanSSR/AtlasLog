@@ -8,6 +8,8 @@ import '../utils/responsive.dart';
 import '../widgets/gradient_border_box.dart';
 import 'member_detail_screen.dart';
 
+enum _SortOption { nameAsc, expiryDate, dueHighToLow, joinDateNewest }
+
 class MembersTabScreen extends ConsumerStatefulWidget {
   const MembersTabScreen({super.key});
 
@@ -20,6 +22,7 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
   List<Member> _all = [];
   List<Member> _filtered = [];
   bool _loading = true;
+  _SortOption _sortOption = _SortOption.nameAsc;
 
   @override
   void initState() {
@@ -45,12 +48,48 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
     final query = _searchCtrl.text.trim().toLowerCase();
     setState(() {
       _filtered = query.isEmpty
-          ? _all
+          ? List.of(_all)
           : _all.where((m) =>
               m.name.toLowerCase().contains(query) ||
               m.mobile.contains(query) ||
               m.memberCode.toLowerCase().contains(query)).toList();
+      _sortFiltered();
     });
+  }
+
+  void _sortFiltered() {
+    switch (_sortOption) {
+      case _SortOption.nameAsc:
+        _filtered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _SortOption.expiryDate:
+        _filtered.sort((a, b) => a.endDate.compareTo(b.endDate));
+        break;
+      case _SortOption.dueHighToLow:
+        _filtered.sort((a, b) => b.amountDue.compareTo(a.amountDue));
+        break;
+      case _SortOption.joinDateNewest:
+        _filtered.sort((a, b) => b.startDate.compareTo(a.startDate));
+        break;
+    }
+  }
+
+  void _setSortOption(_SortOption option) {
+    setState(() => _sortOption = option);
+    _applyFilter();
+  }
+
+  String _sortOptionLabel(_SortOption option) {
+    switch (option) {
+      case _SortOption.nameAsc:
+        return 'Name (A-Z)';
+      case _SortOption.expiryDate:
+        return 'Expiry Date';
+      case _SortOption.dueHighToLow:
+        return 'Due Amount (High-Low)';
+      case _SortOption.joinDateNewest:
+        return 'Join Date (Newest)';
+    }
   }
 
   @override
@@ -107,9 +146,31 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
               ),
               const SizedBox(height: 16),
               Responsive.centered(
-                Text(
-                  '${_filtered.length} member${_filtered.length == 1 ? '' : 's'}',
-                  style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+                Row(
+                  children: [
+                    Text(
+                      '${_filtered.length} member${_filtered.length == 1 ? '' : 's'}',
+                      style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+                    ),
+                    const Spacer(),
+                    PopupMenuButton<_SortOption>(
+                      tooltip: 'Sort by',
+                      icon: Icon(Icons.sort, size: 20, color: theme.hintColor),
+                      onSelected: _setSortOption,
+                      itemBuilder: (ctx) => _SortOption.values
+                          .map((o) => PopupMenuItem(
+                                value: o,
+                                child: Row(
+                                  children: [
+                                    if (o == _sortOption) Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
+                                    if (o == _sortOption) const SizedBox(width: 6),
+                                    Text(_sortOptionLabel(o)),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
                 ),
                 maxWidth: Responsive.maxContentWidth,
               ),

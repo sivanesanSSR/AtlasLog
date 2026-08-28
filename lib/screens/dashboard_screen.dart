@@ -19,6 +19,10 @@ import 'member_detail_screen.dart';
 /// Which quick-filter card is currently active on the Dashboard, if any.
 enum _CardFilter { none, paid, unpaid, active, expiringSoon, expired }
 
+/// User-selectable sort order for the members list. Previously the list
+/// was hardcoded to sort by expiry date with no way to change it.
+enum _SortOption { expiryDate, nameAsc, dueHighToLow, joinDateNewest }
+
 class DashboardScreen extends ConsumerStatefulWidget {
   /// When true, this widget renders only its body content (no Scaffold/
   /// AppBar/Drawer/FAB) — used when hosted as a tab inside HomeShellScreen,
@@ -42,6 +46,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _searchCtrl = TextEditingController();
   DateTimeRange? _dateRange;
   _CardFilter _cardFilter = _CardFilter.none;
+  _SortOption _sortOption = _SortOption.expiryDate;
 
   @override
   void initState() {
@@ -110,7 +115,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
         return matchesQuery && matchesDate && matchesCard;
       }).toList();
+      _sortFilteredMembers();
     });
+  }
+
+  void _sortFilteredMembers() {
+    switch (_sortOption) {
+      case _SortOption.expiryDate:
+        _filteredMembers.sort((a, b) => a.endDate.compareTo(b.endDate));
+        break;
+      case _SortOption.nameAsc:
+        _filteredMembers.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _SortOption.dueHighToLow:
+        _filteredMembers.sort((a, b) => b.amountDue.compareTo(a.amountDue));
+        break;
+      case _SortOption.joinDateNewest:
+        _filteredMembers.sort((a, b) => b.startDate.compareTo(a.startDate));
+        break;
+    }
+  }
+
+  void _setSortOption(_SortOption option) {
+    setState(() => _sortOption = option);
+    _applyFilters();
   }
 
   Future<void> _pickDateRange() async {
@@ -138,6 +166,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
+  Future<void> _exportMembersCsv() async {
+    Navigator.of(context).pop(); // close drawer
+    try {
+      final repo = ref.read(gymRepositoryProvider);
+      final members = await repo.getMembers();
+      final plans = await repo.getPlans();
+      await ref.read(csvExportServiceProvider).shareMembersCsv(members: members, plans: plans);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('CSV export failed: $e')));
     }
   }
 
@@ -196,6 +237,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16, vertical: 16),
               children: [
                 Responsive.centered(_buildCountsGrid(context), maxWidth: Responsive.maxContentWidth),
+                Responsive.centered(_buildTotalDueBanner(context), maxWidth: Responsive.maxContentWidth),
                 const SizedBox(height: 20),
                 Responsive.centered(_buildSearchAndFilterRow(), maxWidth: Responsive.maxContentWidth),
                 const SizedBox(height: 12),
@@ -359,6 +401,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               title: const Text('Import Backup'),
               onTap: _importBackup,
             ),
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Export Members (CSV)'),
+              onTap: _exportMembersCsv,
+            ),
           ],
         ),
       ),
@@ -456,6 +503,32 @@ Widget _buildSearchAndFilterRow() {
               ),
             ),
           ],
+          const SizedBox(width: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: GradientBorderBox(
+              borderRadius: 14,
+              borderWidth: 1.2,
+              fillColor: theme.cardColor,
+              child: PopupMenuButton<_SortOption>(
+                tooltip: 'Sort by',
+                icon: const Icon(Icons.sort, size: 20, color: AppTheme.primary),
+                onSelected: _setSortOption,
+                itemBuilder: (ctx) => _SortOption.values
+                    .map((o) => PopupMenuItem(
+                          value: o,
+                          child: Row(
+                            children: [
+                              if (o == _sortOption) const Icon(Icons.check, size: 16, color: AppTheme.primary),
+                              if (o == _sortOption) const SizedBox(width: 6),
+                              Text(_sortOptionLabel(o)),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ),
         ],
       ),
     ],
@@ -486,6 +559,20 @@ String _cardFilterLabel(_CardFilter filter) {
   }
 }
 
+String _sortOptionLabel(_SortOption option) {
+  switch (option) {
+    case _SortOption.expiryDate:
+      return 'Expiry Date';
+    case _SortOption.nameAsc:
+      return 'Name (A-Z)';
+    case _SortOption.dueHighToLow:
+      return 'Due Amount (High-Low)';
+    case _SortOption.joinDateNewest:
+      return 'Join Date (Newest)';
+  }
+}
+
+
 Widget _buildCountsGrid(BuildContext context) {
   final c = _counts!;
   final items = [
@@ -504,6 +591,52 @@ Widget _buildCountsGrid(BuildContext context) {
     mainAxisSpacing: 8,
     crossAxisSpacing: 8,
     children: items.map((i) => _countCard(i.$1, i.$2, i.$3, i.$4)).toList(),
+  );
+}
+
+/// The count grid above shows *how many* members are unpaid, but not
+/// *how much* money that represents — which is usually the first thing
+/// a gym owner wants to know. This surfaces the ₹ total (previously only
+/// visible buried in the separate Analytics screen) right on the
+/// dashboard, and tapping it applies the same "Unpaid" filter as the
+/// Unpaid count card.
+Widget _buildTotalDueBanner(BuildContext context) {
+  final totalDue = _allMembers.fold<double>(0, (sum, m) => sum + m.amountDue);
+  if (totalDue <= 0) return const SizedBox.shrink();
+
+  final theme = Theme.of(context);
+  final isActive = _cardFilter == _CardFilter.unpaid;
+
+  return Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: GradientBorderBox(
+        borderRadius: 14,
+        borderWidth: isActive ? 2.5 : 1.2,
+        fillColor: AppTheme.danger.withOpacity(0.08),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _toggleCardFilter(_CardFilter.unpaid),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            child: Row(
+              children: [
+                const Icon(Icons.currency_rupee, size: 18, color: AppTheme.danger),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Total Pending Due: ₹${totalDue.toStringAsFixed(0)}',
+                    style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 18, color: theme.hintColor),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

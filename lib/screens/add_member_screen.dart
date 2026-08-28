@@ -8,6 +8,7 @@ import '../models/payment.dart';
 import '../widgets/member_photo_picker.dart';
 import 'plan_management_screen.dart';
 import '../utils/responsive.dart';
+import '../utils/validators.dart';
 
 class AddMemberScreen extends ConsumerStatefulWidget {
   const AddMemberScreen({super.key});
@@ -179,7 +180,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                       controller: _mobileCtrl,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(labelText: 'Mobile Number'),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      validator: validateMobileNumber,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

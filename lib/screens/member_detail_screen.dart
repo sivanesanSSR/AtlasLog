@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/providers.dart';
 import '../services/reminder_service.dart';
 import '../models/member.dart';
@@ -260,6 +261,161 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     }
   }
 
+  Future<void> _shareReceipt(Payment payment) async {
+    final gymProfile = await ref.read(gymRepositoryProvider).getGymProfile();
+    final gymName = gymProfile?.name.isNotEmpty == true ? gymProfile!.name : 'Gym';
+    final member = _member!;
+    final dateStr = '${payment.date.day}/${payment.date.month}/${payment.date.year}';
+
+    final receipt = '''
+$gymName — Payment Receipt
+
+Member: ${member.name} (${member.memberCode})
+Amount: ₹${payment.amount.toStringAsFixed(0)}
+Date: $dateStr
+Mode: ${_modeLabel(payment.mode)}
+''';
+
+    await Share.share(receipt.trim());
+  }
+
+  Future<void> _editPayment(Payment payment) async {
+    final amountCtrl = TextEditingController(text: payment.amount.toStringAsFixed(0));
+    final formKey = GlobalKey<FormState>();
+    PaymentMode selectedMode = payment.mode;
+    DateTime selectedDate = payment.date;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Edit Payment'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '₹',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    final amount = double.tryParse((v ?? '').trim());
+                    if (amount == null || amount <= 0) return 'Enter a valid amount';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2015),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setDialogState(() => selectedDate = picked);
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'Date', border: OutlineInputBorder()),
+                    child: Row(
+                      children: [
+                        Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                        const Spacer(),
+                        const Icon(Icons.calendar_today, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Payment Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: PaymentMode.values.map((mode) {
+                    return ChoiceChip(
+                      label: Text(_modeLabel(mode)),
+                      selected: selectedMode == mode,
+                      onSelected: (_) => setDialogState(() => selectedMode = mode),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true) return;
+
+    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    try {
+      await ref.read(gymRepositoryProvider).updatePayment(
+            paymentId: payment.id,
+            amount: amount,
+            mode: selectedMode,
+            date: selectedDate,
+          );
+      _wasChanged = true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment updated.')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update payment: $e')),
+      );
+    }
+  }
+
+  Future<void> _deletePayment(Payment payment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Payment'),
+        content: Text('Delete this ₹${payment.amount.toStringAsFixed(0)} payment record? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(gymRepositoryProvider).deletePayment(payment.id);
+      _wasChanged = true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment deleted.')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete payment: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -305,6 +461,23 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                               leading: const Icon(Icons.receipt_long_outlined),
                               title: Text('₹${p.amount.toStringAsFixed(0)}'),
                               subtitle: Text('${p.date.toLocal().toString().split(' ')[0]} · ${_modeLabel(p.mode)}'),
+                              trailing: PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, size: 20),
+                                onSelected: (action) {
+                                  if (action == 'edit') {
+                                    _editPayment(p);
+                                  } else if (action == 'delete') {
+                                    _deletePayment(p);
+                                  } else if (action == 'share') {
+                                    _shareReceipt(p);
+                                  }
+                                },
+                                itemBuilder: (ctx) => const [
+                                  PopupMenuItem(value: 'share', child: Text('Share Receipt')),
+                                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                ],
+                              ),
                             ),
                           )),
                   ],

@@ -6,6 +6,7 @@ import '../services/gym_repository.dart';
 import '../models/member.dart';
 import '../widgets/member_photo_picker.dart';
 import '../utils/responsive.dart';
+import '../utils/validators.dart';
 
 class EditMemberScreen extends ConsumerStatefulWidget {
   final Member member;
@@ -124,7 +125,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
                       controller: _mobileCtrl,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(labelText: 'Mobile Number'),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      validator: validateMobileNumber,
                     ),
                     const SizedBox(height: 12),
                     InkWell(
