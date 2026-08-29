@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../services/gym_repository.dart';
@@ -124,6 +125,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
                     TextFormField(
                       controller: _mobileCtrl,
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
                       decoration: const InputDecoration(labelText: 'Mobile Number'),
                       validator: validateMobileNumber,
                     ),

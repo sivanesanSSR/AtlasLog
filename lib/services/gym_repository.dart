@@ -103,6 +103,7 @@ class GymRepository {
     File? photoFile,
     String? customMemberCode,
     DateTime? paidOnDate,
+    DateTime? customEndDate,
     PaymentMode paymentMode = PaymentMode.cash,
   }) async {
     final members = await getMembers();
@@ -141,7 +142,10 @@ class GymRepository {
     }
 
     final start = paidOnDate ?? DateTime.now();
-    final endDate = addMonthsClamped(start, plan.durationMonths);
+    // Default expiry is join date + the selected plan's duration, but the
+    // gym owner can override it explicitly at creation time (e.g. a
+    // negotiated extra week) via customEndDate.
+    final endDate = customEndDate ?? addMonthsClamped(start, plan.durationMonths);
     final price = plan.price;
     final id = _uuid.v4();
 
@@ -536,10 +540,15 @@ class GymRepository {
           // of those buckets apply until they're unfrozen.
           break;
       }
-      if (m.isPaid) {
-        paid++;
-      } else {
+      // Same rule as the Dashboard's tap-filter: "Paid" means currently
+      // paid-up on a live membership, so expired members are excluded
+      // even if they happened to be paid off before lapsing. "Unpaid"
+      // stays purely about the due amount regardless of status — an
+      // owner still wants to see money owed by an expired member.
+      if (!m.isPaid) {
         unpaid++;
+      } else if (m.status != MemberStatus.expired) {
+        paid++;
       }
     }
 

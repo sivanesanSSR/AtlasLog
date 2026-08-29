@@ -81,6 +81,7 @@ class _MemberPhotoPickerState extends State<MemberPhotoPicker> {
           toolbarTitle: 'Crop Photo',
           toolbarColor: AppTheme.secondary,
           toolbarWidgetColor: Colors.white,
+          statusBarColor: AppTheme.secondary,
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,
           hideBottomControls: false,

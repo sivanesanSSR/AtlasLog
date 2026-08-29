@@ -106,7 +106,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
         final matchesCard = switch (_cardFilter) {
           _CardFilter.none => true,
-          _CardFilter.paid => m.isPaid,
+          // "Paid" means currently paid-up and still a live membership —
+          // an expired member who happened to be paid off before they
+          // lapsed isn't meaningfully "Paid" today, so exclude expired
+          // (this was the bug: Paid mixed in expired members because it
+          // only checked amountDue, never status).
+          _CardFilter.paid => m.isPaid && m.status != MemberStatus.expired,
           _CardFilter.unpaid => !m.isPaid,
           _CardFilter.active => m.status == MemberStatus.active,
           _CardFilter.expiringSoon => m.status == MemberStatus.expiringSoon,
@@ -640,14 +645,17 @@ Widget _buildTotalDueBanner(BuildContext context) {
   );
 }
 
-/// Phones get the original single-column list of `ListTile` rows.
-/// Tablets/desktops switch to a multi-column grid of member cards so
-/// the wider screen doesn't just leave the extra space empty.
+/// Dashboard's member preview always uses a grid on tablet+ (it's a
+/// compact summary section on a longer scrolling page), but the aspect
+/// ratio needs to adapt to orientation — a tablet in portrait gives each
+/// column much less width than landscape, and a fixed 2.6 ratio was
+/// squeezing the two-line trailing text and causing overflow there.
 Widget _buildMembersList(BuildContext context) {
   if (Responsive.isPhone(context)) {
     return Column(children: _filteredMembers.map(_buildMemberTile).toList());
   }
   final columns = Responsive.gridColumns(context, tablet: 2, desktop: 3);
+  final aspectRatio = Responsive.isPortrait(context) ? 1.9 : 2.6;
   return GridView.builder(
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
@@ -656,7 +664,7 @@ Widget _buildMembersList(BuildContext context) {
       crossAxisCount: columns,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
-      childAspectRatio: 2.6,
+      childAspectRatio: aspectRatio,
     ),
     itemBuilder: (context, i) => _buildMemberTile(_filteredMembers[i]),
   );

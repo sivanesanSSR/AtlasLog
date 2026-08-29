@@ -19,4 +19,19 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <!-- Used by image_cropper's native UCropActivity (see AndroidManifest.xml).
+         Root cause of the crop screen's Done/Cancel toolbar overlapping the
+         status bar / gesture-nav area on modern phones: apps targeting
+         Android 15 (API 35) get edge-to-edge enforced on every Activity by
+         default, and UCropActivity's own layout doesn't account for system
+         bar insets. windowOptOutEdgeToEdgeEnforcement restores the old
+         "content stays below the status bar" behavior for just this
+         Activity, and windowLayoutInDisplayCutoutMode keeps it clear of
+         notches/cutouts too. The opt-out attribute only exists from API 35
+         onward, but it's safely ignored on older OS versions. -->
+    <style name="UCropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 </resources>

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/providers.dart';
 import '../services/gym_repository.dart';
@@ -9,6 +10,7 @@ import '../widgets/member_photo_picker.dart';
 import 'plan_management_screen.dart';
 import '../utils/responsive.dart';
 import '../utils/validators.dart';
+import '../utils/date_utils.dart';
 
 class AddMemberScreen extends ConsumerStatefulWidget {
   const AddMemberScreen({super.key});
@@ -31,6 +33,15 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   PaymentMode _selectedMode = PaymentMode.cash;
   bool _loadingPlans = true;
   bool _saving = false;
+
+  // null = derive automatically from join date + plan duration (default:
+  // 1 month if no plan is selected yet). Once the owner taps the expiry
+  // field and picks a date, it's pinned and no longer follows the plan/
+  // join-date default — that's the "customisable" override.
+  DateTime? _customEndDate;
+
+  DateTime get _effectiveEndDate =>
+      _customEndDate ?? addMonthsClamped(_paidOnDate, _selectedPlan?.durationMonths ?? 1);
 
   @override
   void initState() {
@@ -57,6 +68,17 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       helpText: 'Payment / Join Date',
     );
     if (picked != null) setState(() => _paidOnDate = picked);
+  }
+
+  Future<void> _pickExpiryDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _effectiveEndDate,
+      firstDate: _paidOnDate,
+      lastDate: DateTime(2100),
+      helpText: 'Expiry Date',
+    );
+    if (picked != null) setState(() => _customEndDate = picked);
   }
 
   Future<void> _submit() async {
@@ -101,6 +123,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             photoFile: _photoFile,
             customMemberCode: _memberIdCtrl.text.trim().isEmpty ? null : _memberIdCtrl.text.trim(),
             paidOnDate: _paidOnDate,
+            customEndDate: _customEndDate,
             paymentMode: _selectedMode,
           );
       if (!mounted) return;
@@ -179,6 +202,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                     TextFormField(
                       controller: _mobileCtrl,
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
                       decoration: const InputDecoration(labelText: 'Mobile Number'),
                       validator: validateMobileNumber,
                     ),
@@ -226,6 +250,32 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                         child: Row(
                           children: [
                             Text('${_paidOnDate.day}/${_paidOnDate.month}/${_paidOnDate.year}'),
+                            const Spacer(),
+                            const Icon(Icons.calendar_today, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: _pickExpiryDate,
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Expiry Date',
+                          helperText: _customEndDate == null
+                              ? 'Defaults to 1 month after join date — tap to customise'
+                              : null,
+                          suffixIcon: _customEndDate != null
+                              ? IconButton(
+                                  tooltip: 'Reset to default',
+                                  icon: const Icon(Icons.refresh, size: 18),
+                                  onPressed: () => setState(() => _customEndDate = null),
+                                )
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Text('${_effectiveEndDate.day}/${_effectiveEndDate.month}/${_effectiveEndDate.year}'),
                             const Spacer(),
                             const Icon(Icons.calendar_today, size: 18),
                           ],

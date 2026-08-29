@@ -268,12 +268,14 @@ class MembersTabScreenState extends ConsumerState<MembersTabScreen> {
         );
   }
 
-  /// Phones: single-column list of `ListTile` rows (unchanged).
-  /// Tablets/desktop: grid of member cards, 2-3 columns per your choice,
-  /// so the wider screen shows more members at once instead of one long
-  /// stretched-out column.
+  /// Phones, and tablets held in portrait, get the single-column list —
+  /// in portrait a multi-column grid leaves each card too narrow for its
+  /// fixed aspect ratio and starts clipping/overflowing content. The grid
+  /// only earns its keep once there's real width to spread into:
+  /// landscape tablets or desktop.
   Widget _buildMembersGrid(BuildContext context) {
-    if (Responsive.isPhone(context)) {
+    final useGrid = Responsive.isTablet(context) && !Responsive.isPortrait(context);
+    if (!useGrid) {
       return Column(children: _filtered.map(_buildTile).toList());
     }
     final columns = Responsive.gridColumns(context, tablet: 2, desktop: 3);

@@ -30,6 +30,16 @@ class Responsive {
 
   static bool isPhone(BuildContext context) => !isTablet(context);
 
+  /// True when the viewport is taller than it is wide. Width alone
+  /// (isTablet/isDesktop) doesn't capture orientation — a tablet held in
+  /// portrait still has width >= tabletBreakpoint, but each grid column
+  /// gets much less horizontal room than the same device in landscape,
+  /// which was overflowing fixed-aspect-ratio member cards.
+  static bool isPortrait(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.height >= size.width;
+  }
+
   /// Number of grid columns for card/member grids, scaled by width.
   static int gridColumns(BuildContext context, {int phone = 1, int tablet = 2, int desktop = 3}) {
     final width = MediaQuery.sizeOf(context).width;
