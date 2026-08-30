@@ -1,0 +1,85 @@
+||\  /|| ||  || ||'''| ||  || ||''''  ||```|| ||\  ||
+|| \/ || ||  || ||---  ||  || ||      ||---|| || \ ||
+||    || ||__|| ||   \ ||__|| ||__|'| ||   || ||  \|| 
+
+
+Issues  
+==============================================
+Important issue only renew option is there no option for collect due amount
+there is no option to pay due amount 
+mobile number (10 digits only)
+tab have response issue ( in portrait) Dashboard ==> members grid, members ==> list page,    
+expires date should be one month for joining date by default also customisable while creating member,
+on dashboard paid filter shows both expired and paid list,
+while editing image (crop) when the mobile phone have swipe gestures mobile top bar is overlapping to the done and cancel button on top
+----------------------------------------------
+
+Pending 
+==============================================
+Theme Changes
+
+
+Version 2 implementation 
+-------------------------------
+
+### **Phase 1: Production Launch & Stability (v1.0.0 — Current Phase)**
+------------------------------------------------------------------------
+* Complete the mandatory 14-day closed testing cycle with 20+ testers.
+* Resolve real-world layout, form validation, and workflow bugs reported by testers.
+* Submit the production readiness questionnaire and publish the public release to Google Play.
+* Maintain a lightweight privacy policy hosted online confirming offline-first local storage.
+---
+### **Phase 2: Post-Launch Polish & Media Portability (v1.1 – v1.2)**
+------------------------------------------------------------------------
+* **ZIP-Based Full Backup & Restore:** Package JSON database records alongside the `member_photos/` folder and gym logo into a compressed `.zip` file so photos survive device migrations.
+* **Dynamic Theme Switcher:** Introduce user-selectable theme accents in Settings (Neon Emerald Green, Crimson Red, or Classic Orange) with persisted local preferences.
+* **Financial Export Engine:** Generate downloadable and shareable CSV/PDF summaries for monthly collections, revenue trends, and pending dues.
+---
+### **Phase 3: Monetization, Ads & Hybrid Cloud Sync (v2.0)**
+------------------------------------------------------------------------
+* **Ad Monetization (Google AdMob via `google_mobile_ads`):**
+* Banner ads placed at the bottom of non-critical views (Reports/Analytics).
+* Capped interstitial ads after key actions (e.g., adding or renewing members).
+* Rewarded video ads enabling free users to unlock one-time premium actions (such as exporting PDF reports).
+* Graceful container collapsing when devices are offline.
+
+* **Freemium & Pro Subscription (Google Play Billing / RevenueCat):**
+* **Free Tier:** Core CRUD, due tracking, basic analytics, and local JSON backups (capped at 25 members, ad-supported).
+* **Pro Tier:** 100% ad-free, unlimited members, multi-device cloud sync, ZIP media backup/restore, custom themes, and PDF exports.
+* **Offline Entitlement Caching:** Cache subscription validity locally to maintain uninterrupted Pro access without active internet.
+* **Hybrid Cloud Sync ($0 Ongoing Server Costs):**
+* **Metadata Sync:** Real-time multi-device sync for members, plans, and payments using Firebase Firestore (Spark Free Tier).
+* **Media Storage:** Automated backup of full database snapshots and member photos to the gym owner’s private Google Drive `appDataFolder`.
+---
+### **Phase 4: Operational Automation & Facility Tools (v2.5+)**
+------------------------------------------------------------------------
+* **Digital Member QR Cards:** In-app QR code generation with an integrated front-desk camera scanner to quickly verify member validity and due status.
+* **Automated Expiry Alerts:** Daily background task to schedule local notifications for accounts expiring within 3 days without needing the app open.
+* **Direct Broadcast Queues:** Custom pre-filled WhatsApp messaging queues for gym announcements, holiday schedules, and special promotional offers.
+
+=======================================================================================================================================================
+
+**1. Immediate / Active Testing Phase**
+
+* **Google Play Console Approval Check:** Confirm your closed testing track changes from *In review* to *Active*.
+* **Tester Link Distribution:** Share the "Join on the web" opt-in URL with the 20 whitelisted testers.
+* **14-Day Continuous Engagement:** Ensure testers install the app, open it regularly, and keep it installed for the mandatory 14-day window.
+* **Gather Feedback & Bug Logs:** Collect notes on device-specific UI layout scaling, orientation issues, and payment workflows.
+---
+
+**2. Production Readiness & Play Console Requirements**
+
+* **Production Questionnaire Draft:** Prepare responses for Google Play Console's production access form (detailing testing methodology, feedback collected, and changes made).
+* **Hosted Privacy Policy URL:** Publish a public privacy policy (e.g., hosted on GitHub Pages or Notion) declaring the app's offline-first local storage architecture.
+* **Store Listing Graphics Verification:** Ensure store screenshots, the app icon, and the 1024×500 feature graphic accurately represent the final UI.
+---
+
+**3. App Features & Technical Gaps (Code-Level)**
+
+* **ZIP-Based Photo Backup/Restore:** The current backup feature only exports JSON data records; bundling `member_photos/` and `gym_logo` into a `.zip` archive is still missing.
+
+* **Selectable Theme Engine:** Integrate settings options for users to toggle between Neon Green, Crimson Red, and Classic Orange themes.
+* **Reports Data Export:** Add export functionality (CSV or PDF) for monthly revenue trends and outstanding dues.
+* **AdMob & Subscription Integration:** Add `google_mobile_ads` for free-tier users and `purchases_flutter` / Google Play Billing for the Pro tier.
+* **Automated Daily Background Expiry Checks:** Set up background workers to schedule local notifications automatically for expiring members without requiring manual app opens.
+---
